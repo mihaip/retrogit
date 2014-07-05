@@ -6,6 +6,18 @@
 	<link rel="stylesheet" href="/static/main.css">
 </head>
 <body>
-  GitHop!
+  <h1>GitHop!</h1>
+
+  <code>mihaip</code> is in the following organizations:
+  <ul>
+    {{range .}}
+      <li>
+        <a href="https://github.com/{{.Login}}">
+          <img src="{{.AvatarURL}}" width="32" height="32">
+          {{.Login}}
+        </a>
+      </li>
+    {{end}}
+  </ul>
 </body>
 </html>
