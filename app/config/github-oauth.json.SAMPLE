@@ -1,0 +1,5 @@
+{
+	"ClientId": "REPLACE_ME",
+	"ClientSecret": "REPLACE_ME",
+	"RedirectURL": "https://REPLACE_ME/github/callback"
+}
