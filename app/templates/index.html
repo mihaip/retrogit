@@ -8,13 +8,14 @@
 <body>
   <h1>GitHop!</h1>
 
-  Your repositories:
+  Events:
   <ul>
     {{range .}}
       <li>
-        <a href="https://github.com/{{.FullName}}">
-          {{.FullName}}
-        </a>
+        {{.ID}}
+        <pre>
+          {{printf "%s" .RawPayload}}
+        </pre>
       </li>
     {{end}}
   </ul>

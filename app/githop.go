@@ -54,13 +54,13 @@ func index(w http.ResponseWriter, r *http.Request) {
 	token, _ := oauth_transport.Exchange(code)
 	oauth_transport.Token = token
 
-	gitub_client := github.NewClient(oauth_transport.Client())
-	repos, _, err := gitub_client.Repositories.List("", nil)
+	github_client := github.NewClient(oauth_transport.Client())
+	events, _, err := github_client.Activity.ListEventsPerformedByUser("mihaip", false, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := indexTemplate.Execute(w, repos); err != nil {
+	if err := indexTemplate.Execute(w, events); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

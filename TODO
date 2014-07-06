@@ -1,1 +1,2 @@
 - Option to only do this for public repos (repo vs. public_repo scopes)
+- Don't use the events API, since only 300 events are supported.
