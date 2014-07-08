@@ -1,7 +1,7 @@
 Notes:
-- Don't use the events API, since only 300 events are supported
-- Commits API supports timestamp ranges: https://developer.github.com/v3/repos/commits/
 - Will need to get/store timezone of user (use https://bitbucket.org/pellepim/jstimezonedetect, use it with time.Location.LoadLocation)
+- To get digests for non-user owned organizations, will need to list the organizations and their repositories
+- What about getting other repositories the user has access to?
 
 Later
 - Option to only do this for public repos (repo vs. public_repo scopes)

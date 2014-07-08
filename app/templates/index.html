@@ -8,14 +8,24 @@
 <body>
   <h1>GitHop!</h1>
 
-  Events:
+  {{.User.Login}}'s digest:
   <ul>
-    {{range .}}
+    {{range $index, $repositoryDigest := .RepositoryDigests}}
       <li>
-        {{.ID}}
-        <pre>
-          {{printf "%s" .RawPayload}}
-        </pre>
+        <a href="https://github.com/{{.Repository.FullName}}">
+          {{.Repository.FullName}}
+        </a>
+        <ul>
+          {{range .Commits }}
+            <li>
+              <code><a href="https://github.com/{{$repositoryDigest.Repository.FullName}}/commit/{{.SHA}}">{{.SHA}}</a></code>
+              -
+              <i>{{.Commit.Author.Date}}</i>
+              <br>
+              <pre>{{.Commit.Message}}</pre>
+            </li>
+          {{end}}
+        </ul>
       </li>
     {{end}}
   </ul>

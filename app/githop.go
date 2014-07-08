@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"appengine"
 	"appengine/urlfetch"
@@ -19,6 +20,16 @@ import (
 
 var router *mux.Router
 var githubOauthConfig oauth.Config
+
+type RepositoryDigest struct {
+	Repository *github.Repository
+	Commits    []github.RepositoryCommit
+}
+
+type Digest struct {
+	User              *github.User
+	RepositoryDigests []RepositoryDigest
+}
 
 func initGithubOAuthConfig() {
 	path := "config/github-oauth"
@@ -74,12 +85,44 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		Token:     &token,
 	}
 	githubClient := github.NewClient(oauthTransport.Client())
-	events, _, err := githubClient.Activity.ListEventsPerformedByUser("mihaip", false, nil)
+
+	user, _, err := githubClient.Users.Get("")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := indexTemplate.Execute(w, events); err != nil {
+
+	now := time.Now()
+	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	digestEndTime := digestStartTime.AddDate(0, 0, 7)
+
+	repos, _, err := githubClient.Repositories.List(*user.Login, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	digest := Digest{User: user, RepositoryDigests: make([]RepositoryDigest, 0, len(repos))}
+	for i, repo := range repos {
+		commits, _, err := githubClient.Repositories.ListCommits(
+			*repo.Owner.Login,
+			*repo.Name,
+			&github.CommitsListOptions{
+				Author: *user.Login,
+				Since:  digestStartTime,
+				Until:  digestEndTime,
+			})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(commits) > 0 {
+			n := len(digest.RepositoryDigests)
+			digest.RepositoryDigests = digest.RepositoryDigests[0 : n+1]
+			digest.RepositoryDigests[n] = RepositoryDigest{&repos[i], commits}
+		}
+	}
+
+	if err := indexTemplate.Execute(w, digest); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
