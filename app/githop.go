@@ -116,9 +116,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(commits) > 0 {
-			n := len(digest.RepositoryDigests)
-			digest.RepositoryDigests = digest.RepositoryDigests[0 : n+1]
-			digest.RepositoryDigests[n] = RepositoryDigest{&repos[i], commits}
+			digest.RepositoryDigests = append(
+				digest.RepositoryDigests, RepositoryDigest{&repos[i], commits})
 		}
 	}
 
