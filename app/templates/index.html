@@ -10,15 +10,15 @@
 
   {{.User.Login}}'s digest:
   <ul>
-    {{range $index, $repositoryDigest := .RepositoryDigests}}
+    {{range $index, $repoDigest := .RepoDigests}}
       <li>
-        <a href="https://github.com/{{.Repository.FullName}}">
-          {{.Repository.FullName}}
+        <a href="https://github.com/{{.Repo.FullName}}">
+          {{.Repo.FullName}}
         </a>
         <ul>
           {{range .Commits }}
             <li>
-              <code><a href="https://github.com/{{$repositoryDigest.Repository.FullName}}/commit/{{.SHA}}">{{.SHA}}</a></code>
+              <code><a href="https://github.com/{{$repoDigest.Repo.FullName}}/commit/{{.SHA}}">{{.SHA}}</a></code>
               -
               <i>{{.Commit.Author.Date}}</i>
               <br>

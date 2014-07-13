@@ -21,14 +21,14 @@ import (
 var router *mux.Router
 var githubOauthConfig oauth.Config
 
-type RepositoryDigest struct {
-	Repository *github.Repository
-	Commits    []github.RepositoryCommit
+type RepoDigest struct {
+	Repo    *github.Repository
+	Commits []github.RepositoryCommit
 }
 
 type Digest struct {
-	User              *github.User
-	RepositoryDigests []RepositoryDigest
+	User        *github.User
+	RepoDigests []*RepoDigest
 }
 
 func initGithubOAuthConfig() {
@@ -101,23 +101,41 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	digest := Digest{User: user, RepositoryDigests: make([]RepositoryDigest, 0, len(repos))}
-	for i, repo := range repos {
-		commits, _, err := githubClient.Repositories.ListCommits(
-			*repo.Owner.Login,
-			*repo.Name,
-			&github.CommitsListOptions{
-				Author: *user.Login,
-				Since:  digestStartTime,
-				Until:  digestEndTime,
-			})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if len(commits) > 0 {
-			digest.RepositoryDigests = append(
-				digest.RepositoryDigests, RepositoryDigest{&repos[i], commits})
+	digest := Digest{User: user, RepoDigests: make([]*RepoDigest, 0, len(repos))}
+	type RepoDigestResponse struct {
+		repoDigest *RepoDigest
+		err        error
+	}
+	ch := make(chan *RepoDigestResponse)
+	for _, repo := range repos {
+		go func(repo github.Repository) {
+			commits, _, err := githubClient.Repositories.ListCommits(
+				*repo.Owner.Login,
+				*repo.Name,
+				&github.CommitsListOptions{
+					Author: *user.Login,
+					Since:  digestStartTime,
+					Until:  digestEndTime,
+				})
+			if err != nil {
+				ch <- &RepoDigestResponse{nil, err}
+			} else {
+				ch <- &RepoDigestResponse{&RepoDigest{&repo, commits}, nil}
+			}
+		}(repo)
+	}
+loop:
+	for {
+		select {
+		case r := <-ch:
+			if r.err != nil {
+				http.Error(w, r.err.Error(), http.StatusInternalServerError)
+				return
+			}
+			digest.RepoDigests = append(digest.RepoDigests, r.repoDigest)
+			if len(digest.RepoDigests) == len(repos) {
+				break loop
+			}
 		}
 	}
 
