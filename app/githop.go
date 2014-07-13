@@ -96,7 +96,9 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	digestEndTime := digestStartTime.AddDate(0, 0, 7)
 
-	repos, _, err := githubClient.Repositories.List(*user.Login, nil)
+	// The username parameter must be left blank so that we can get all of the
+	// repositories the user has access to, not just ones that they own.
+	repos, _, err := githubClient.Repositories.List("", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
