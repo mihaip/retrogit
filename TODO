@@ -1,4 +1,5 @@
 Notes:
+- Option to disable HTTP request cache (or at least expire user/organization queries)
 - Will need to get/store timezone of user (use https://bitbucket.org/pellepim/jstimezonedetect, use it with time.Location.LoadLocation)
 - To get digests for non-user owned organizations, will need to list the organizations and their repositories
 - Handle pagination for repository list
