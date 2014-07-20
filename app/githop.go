@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -30,6 +31,13 @@ type RepoDigest struct {
 	Repo    *github.Repository
 	Commits []github.RepositoryCommit
 }
+
+// sort.Interface implementation for sorting RepoDigests.
+type ByRepoFullName []*RepoDigest
+
+func (a ByRepoFullName) Len() int           { return len(a) }
+func (a ByRepoFullName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByRepoFullName) Less(i, j int) bool { return *a[i].Repo.FullName < *a[j].Repo.FullName }
 
 type Digest struct {
 	User        *github.User
@@ -70,6 +78,7 @@ func (digest *Digest) Fetch(repos []github.Repository, githubClient *github.Clie
 			digest.RepoDigests = append(digest.RepoDigests, r.repoDigest)
 		}
 	}
+	sort.Sort(ByRepoFullName(digest.RepoDigests))
 	return nil
 }
 
@@ -144,7 +153,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		newRepos := make([]github.Repository, len(repos) + len(orgRepos))
+		newRepos := make([]github.Repository, len(repos)+len(orgRepos))
 		copy(newRepos, repos)
 		copy(newRepos[len(repos):], orgRepos)
 		repos = newRepos

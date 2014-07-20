@@ -8,7 +8,6 @@ TODO
 
 Notes:
 - Will need to get/store timezone of user (use https://bitbucket.org/pellepim/jstimezonedetect, use it with time.Location.LoadLocation)
-- To get digests for non-user owned organizations, will need to list the organizations and their repositories
 - To make a raw HTTP request with the github package:
   httpReq, _ := githubClient.NewRequest("GET", "user/teams", nil)
 	var jsonResp interface{}
