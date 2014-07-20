@@ -132,6 +132,24 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	orgs, _, err := githubClient.Organizations.List("", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for _, org := range orgs {
+		orgRepos, _, err := githubClient.Repositories.ListByOrg(*org.Login, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		newRepos := make([]github.Repository, len(repos) + len(orgRepos))
+		copy(newRepos, repos)
+		copy(newRepos[len(repos):], orgRepos)
+		repos = newRepos
+	}
+
 	now := time.Now()
 	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	digestEndTime := digestStartTime.AddDate(0, 0, 7)

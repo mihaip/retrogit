@@ -1,9 +1,14 @@
-Notes:
-- Option to disable HTTP request cache (or at least expire user/organization queries)
-- Will need to get/store timezone of user (use https://bitbucket.org/pellepim/jstimezonedetect, use it with time.Location.LoadLocation)
-- To get digests for non-user owned organizations, will need to list the organizations and their repositories
+TODO
 - Handle pagination for repository list
 - Handle pagination for commit list
+- Digests for activity every year going back to the oldest repository
+- List all repostories that were included in the the search in a footer of the template
+- Option to disable HTTP request cache (or at least expire user/organization queries)
+- Weekly vs. daily option
+
+Notes:
+- Will need to get/store timezone of user (use https://bitbucket.org/pellepim/jstimezonedetect, use it with time.Location.LoadLocation)
+- To get digests for non-user owned organizations, will need to list the organizations and their repositories
 - To make a raw HTTP request with the github package:
   httpReq, _ := githubClient.NewRequest("GET", "user/teams", nil)
 	var jsonResp interface{}
