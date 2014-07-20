@@ -1,10 +1,14 @@
 TODO
-- Handle pagination for repository list
+- Persist OAuth token in the datastore and use session cookies
+- Handle pagination for user repository list
+- Handle pagination for user organization list
+- Handle pagination for organization repository list
 - Handle pagination for commit list
 - Digests for activity every year going back to the oldest repository
 - List all repostories that were included in the the search in a footer of the template
 - Option to disable HTTP request cache (or at least expire user/organization queries)
 - Weekly vs. daily option
+- Render markdown in commit messages (using https://github.com/russross/blackfriday)
 
 Notes:
 - Will need to get/store timezone of user (use https://bitbucket.org/pellepim/jstimezonedetect, use it with time.Location.LoadLocation)
