@@ -135,6 +135,15 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	digestEndTime := digestStartTime.AddDate(0, 0, 7)
+
+	// Only look at repos that may have activity in the digest interval.
+	var digestRepos []github.Repository
+	for _, repo := range repos {
+		if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt.After(digestStartTime) {
+			digestRepos = append(digestRepos, repo)
+		}
+	}
+	repos = digestRepos
 	digest := Digest{
 		User:        user,
 		RepoDigests: make([]*RepoDigest, 0, len(repos)),
