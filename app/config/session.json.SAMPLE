@@ -1,0 +1,6 @@
+{
+	"AuthenticationKey": "REPLACE_ME_WITH_A_32_BYTE_BASE_64_ENCODED_KEY_BYES",
+	"EncryptionKey": "REPLACE_ME_WITH_A_32_BYTE_BASE_64_ENCODED_KEY_BYTES",
+	"CookieName": "session",
+	"TokenKey": "token_temp"
+}

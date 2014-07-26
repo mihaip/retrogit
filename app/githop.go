@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -22,10 +21,20 @@ import (
 	"code.google.com/p/goauth2/oauth"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 var router *mux.Router
 var githubOauthConfig oauth.Config
+var sessionStore *sessions.CookieStore
+var sessionConfig SessionConfig
+
+type SessionConfig struct {
+	AuthenticationKey string
+	EncryptionKey     string
+	CookieName        string
+	TokenKey          string
+}
 
 type RepoDigest struct {
 	Repo    *github.Repository
@@ -82,6 +91,32 @@ func (digest *Digest) Fetch(repos []github.Repository, githubClient *github.Clie
 	return nil
 }
 
+func initSessionConfig() {
+	configBytes, err := ioutil.ReadFile("config/session.json")
+	if err != nil {
+		log.Panicf("Could not read session config: %s", err.Error())
+	}
+	err = json.Unmarshal(configBytes, &sessionConfig)
+	if err != nil {
+		log.Panicf("Could not parse session config %s: %s", configBytes, err.Error())
+	}
+
+	authenticationKey, err := base64.StdEncoding.DecodeString(sessionConfig.AuthenticationKey)
+	if err != nil {
+		log.Panicf("Could not decode session config authentication key %s: %s", sessionConfig.AuthenticationKey, err.Error())
+	}
+	encryptionKey, err := base64.StdEncoding.DecodeString(sessionConfig.EncryptionKey)
+	if err != nil {
+		log.Panicf("Could not decode session config encryption key %s: %s", sessionConfig.EncryptionKey, err.Error())
+	}
+
+	sessionStore = sessions.NewCookieStore(authenticationKey, encryptionKey)
+	sessionStore.Options.Path = "/"
+	sessionStore.Options.MaxAge = 86400 * 30
+	sessionStore.Options.HttpOnly = true
+	sessionStore.Options.Secure = !appengine.IsDevAppServer()
+}
+
 func initGithubOAuthConfig() {
 	path := "config/github-oauth"
 	if appengine.IsDevAppServer() {
@@ -94,7 +129,7 @@ func initGithubOAuthConfig() {
 	}
 	err = json.Unmarshal(configBytes, &githubOauthConfig)
 	if err != nil {
-		log.Panicf("Could not parse GitHut OAuth %s", err.Error())
+		log.Panicf("Could not parse GitHub OAuth config %s: %s", configBytes, err.Error())
 	}
 	githubOauthConfig.Scope = "repo"
 	githubOauthConfig.AuthURL = "https://github.com/login/oauth/authorize"
@@ -102,20 +137,43 @@ func initGithubOAuthConfig() {
 }
 
 func init() {
+	initSessionConfig()
 	initGithubOAuthConfig()
 
 	router = mux.NewRouter()
 	router.HandleFunc("/", indexHandler).Name("index")
+	router.HandleFunc("/session/sign-in", signInHandler).Name("sign-in")
+	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out")
 	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
 	http.Handle("/", router)
 }
 
 var indexTemplate = template.Must(template.ParseFiles("templates/index.html"))
+var indexSignedOutTemplate = template.Must(template.ParseFiles("templates/index-signed-out.html"))
+
+func signInHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, githubOauthConfig.AuthCodeURL(""), http.StatusFound)
+}
+
+func signOutHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	session.Options.MaxAge = 0
+	session.Save(r, w)
+	indexUrl, _ := router.Get("index").URL()
+	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+}
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	tokenEncoded := r.FormValue("token")
-	if tokenEncoded == "" {
-		http.Redirect(w, r, githubOauthConfig.AuthCodeURL(""), http.StatusFound)
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	tokenEncoded, ok := session.Values[sessionConfig.TokenKey].(string)
+	if !ok {
+		signInUrl, _ := router.Get("sign-in").URL()
+		var signedOutParams = map[string]string{
+			"SignInUrl": signInUrl.String(),
+		}
+		if err := indexSignedOutTemplate.Execute(w, signedOutParams); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 	token, err := decodeOAuthToken(tokenEncoded)
@@ -200,11 +258,13 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	redirectUrl, _ := router.GetRoute("index").URL()
-	redirectParams := url.Values{}
-	redirectParams.Add("token", tokenEncoded)
-	redirectUrl.RawQuery = redirectParams.Encode()
-	http.Redirect(w, r, redirectUrl.String(), http.StatusFound)
+
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	session.Values[sessionConfig.TokenKey] = tokenEncoded
+	session.Save(r, w)
+	log.Printf("session.Values: %s", session.Values)
+	indexUrl, _ := router.Get("index").URL()
+	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 }
 
 func githubOAuthTransport(r *http.Request) *oauth.Transport {
