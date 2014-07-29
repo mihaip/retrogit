@@ -157,7 +157,7 @@ func signInHandler(w http.ResponseWriter, r *http.Request) {
 
 func signOutHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	session.Options.MaxAge = 0
+	session.Options.MaxAge = -1
 	session.Save(r, w)
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
@@ -168,10 +168,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	tokenEncoded, ok := session.Values[sessionConfig.TokenKey].(string)
 	if !ok {
 		signInUrl, _ := router.Get("sign-in").URL()
-		var signedOutParams = map[string]string{
+		var data = map[string]string{
 			"SignInUrl": signInUrl.String(),
 		}
-		if err := indexSignedOutTemplate.Execute(w, signedOutParams); err != nil {
+		if err := indexSignedOutTemplate.Execute(w, data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
@@ -239,8 +239,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	if err := indexTemplate.Execute(w, digest); err != nil {
+	signOutUrl, _ := router.Get("sign-out").URL()
+	var data = map[string]interface{}{
+		"SignOutUrl": signOutUrl.String(),
+		"Digest":     digest,
+	}
+	if err := indexTemplate.Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -262,7 +266,6 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	session.Values[sessionConfig.TokenKey] = tokenEncoded
 	session.Save(r, w)
-	log.Printf("session.Values: %s", session.Values)
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 }

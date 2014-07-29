@@ -1,5 +1,4 @@
 TODO
-- Sign out link
 - Persist OAuth token in the datastore and use session cookies
 - Flash message and sign out when OAuth token has expired/is invalid
 - Handle pagination for user repository list

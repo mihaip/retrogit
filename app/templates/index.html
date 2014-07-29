@@ -8,9 +8,15 @@
 <body>
   <h1>GitHop!</h1>
 
-  {{.User.Login}}'s digest:
+  <p>
+    <a href="{{.SignOutUrl}}">
+      Sign Out
+    </a>
+  </p>
+
+  {{.Digest.User.Login}}'s digest:
   <ul>
-    {{range $index, $repoDigest := .RepoDigests}}
+    {{range $index, $repoDigest := .Digest.RepoDigests}}
       <li>
         <a href="https://github.com/{{.Repo.FullName}}">
           {{.Repo.FullName}}
