@@ -1,5 +1,6 @@
 TODO
-- Persist OAuth token in the datastore and use session cookies
+- Break up github.go
+- Loop over registered accounts and send them email
 - Flash message and sign out when OAuth token has expired/is invalid
 - Handle pagination for user repository list
 - Handle pagination for user organization list

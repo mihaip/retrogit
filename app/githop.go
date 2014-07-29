@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"encoding/gob"
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"appengine"
+	"appengine/datastore"
 	"appengine/memcache"
 	"appengine/urlfetch"
 
@@ -33,7 +35,39 @@ type SessionConfig struct {
 	AuthenticationKey string
 	EncryptionKey     string
 	CookieName        string
-	TokenKey          string
+	UserIdKey         string
+}
+
+type Account struct {
+	GitHubUserId int `datastore:",noindex"`
+	// The datastore API doesn't store maps, and the token contains one. We
+	// thefore store a gob-serialized version instead.
+	OAuthTokenSerialized []byte
+	OAuthToken           oauth.Token `datastore:"-,"`
+}
+
+func GetAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
+	key := datastore.NewKey(c, "Account", "", int64(gitHubUserId), nil)
+	account := new(Account)
+	err := datastore.Get(c, key, account)
+	if err != nil {
+		return nil, err
+	}
+	r := bytes.NewBuffer(account.OAuthTokenSerialized)
+	err = gob.NewDecoder(r).Decode(&account.OAuthToken)
+	return account, err
+}
+
+func (account *Account) Put(c appengine.Context) error {
+	w := new(bytes.Buffer)
+	err := gob.NewEncoder(w).Encode(&account.OAuthToken)
+	if err != nil {
+		return err
+	}
+	account.OAuthTokenSerialized = w.Bytes()
+	key := datastore.NewKey(c, "Account", "", int64(account.GitHubUserId), nil)
+	_, err = datastore.Put(c, key, account)
+	return err
 }
 
 type RepoDigest struct {
@@ -165,7 +199,7 @@ func signOutHandler(w http.ResponseWriter, r *http.Request) {
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	tokenEncoded, ok := session.Values[sessionConfig.TokenKey].(string)
+	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
 	if !ok {
 		signInUrl, _ := router.Get("sign-in").URL()
 		var data = map[string]string{
@@ -176,14 +210,20 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	token, err := decodeOAuthToken(tokenEncoded)
+	account, err := GetAccount(appengine.NewContext(r), userId)
+	if account == nil {
+		// Can't look up the account, session cookie must be invalid, clear it.
+		indexUrl, _ := router.Get("sign-out").URL()
+		http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	oauthTransport := githubOAuthTransport(r)
-	oauthTransport.Token = token
+	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
 	user, _, err := githubClient.Users.Get("")
@@ -257,14 +297,27 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tokenEncoded, err := encodeOAuthToken(token)
+
+	oauthTransport.Token = token
+	githubClient := github.NewClient(oauthTransport.Client())
+	user, _, err := githubClient.Users.Get("")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	account := &Account{
+		GitHubUserId: *user.ID,
+		OAuthToken:   *token,
+	}
+	err = account.Put(appengine.NewContext(r))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	session.Values[sessionConfig.TokenKey] = tokenEncoded
+	session.Values[sessionConfig.UserIdKey] = user.ID
 	session.Save(r, w)
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
