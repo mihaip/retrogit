@@ -336,27 +336,6 @@ func githubOAuthTransport(r *http.Request) *oauth.Transport {
 	}
 }
 
-func encodeOAuthToken(token *oauth.Token) (string, error) {
-	tokenBytes, err := json.Marshal(token)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(tokenBytes), nil
-}
-
-func decodeOAuthToken(tokenEncoded string) (*oauth.Token, error) {
-	tokenBytes, err := base64.URLEncoding.DecodeString(tokenEncoded)
-	if err != nil {
-		return nil, err
-	}
-	var token oauth.Token
-	err = json.Unmarshal(tokenBytes, &token)
-	if err != nil {
-		return nil, err
-	}
-	return &token, nil
-}
-
 // Simple http.RoundTripper implementation which wraps an existing transport and
 // caches all responses for GET and HEAD requests. Meant to speed up the
 // iteration cycle during development.
