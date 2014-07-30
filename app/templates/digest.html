@@ -1,0 +1,25 @@
+{{define "digest"}}
+
+{{.User.Login}}'s digest:
+<ul>
+  {{range $index, $repoDigest := .RepoDigests}}
+    <li>
+      <a href="https://github.com/{{.Repo.FullName}}">
+        {{.Repo.FullName}}
+      </a>
+      <ul>
+        {{range .Commits }}
+          <li>
+            <code><a href="https://github.com/{{$repoDigest.Repo.FullName}}/commit/{{.SHA}}">{{.SHA}}</a></code>
+            -
+            <i>{{.Commit.Author.Date}}</i>
+            <br>
+            <pre>{{.Commit.Message}}</pre>
+          </li>
+        {{end}}
+      </ul>
+    </li>
+  {{end}}
+</ul>
+
+{{end}}

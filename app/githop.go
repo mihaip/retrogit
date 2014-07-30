@@ -52,8 +52,7 @@ func init() {
 	http.Handle("/", router)
 }
 
-var indexTemplate = template.Must(template.ParseFiles("templates/index.html"))
-var indexSignedOutTemplate = template.Must(template.ParseFiles("templates/index-signed-out.html"))
+var templates = template.Must(template.ParseGlob("templates/*.html"))
 
 func signInHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, githubOauthConfig.AuthCodeURL(""), http.StatusFound)
@@ -75,7 +74,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		var data = map[string]string{
 			"SignInUrl": signInUrl.String(),
 		}
-		if err := indexSignedOutTemplate.Execute(w, data); err != nil {
+		if err := templates.ExecuteTemplate(w, "index-signed-out", data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
@@ -105,7 +104,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		"SignOutUrl": signOutUrl.String(),
 		"Digest":     digest,
 	}
-	if err := indexTemplate.Execute(w, data); err != nil {
+	if err := templates.ExecuteTemplate(w, "index", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
