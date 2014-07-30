@@ -1,6 +1,6 @@
 TODO
 - Break up indexHandler
-- Single email sending button
+- Flash message when sending a single email
 - Loop over registered accounts and send them email
 - Flash message and sign out when OAuth token has expired/is invalid
 - Handle pagination for user repository list

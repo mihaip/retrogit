@@ -16,6 +16,10 @@
     </a>
   </p>
 
+  <form method="POST" action="{{.SendDigestUrl}}">
+    <input type="submit" value="Email Digest">
+  </form>
+
   {{template "digest" .Digest}}
 </body>
 </html>
