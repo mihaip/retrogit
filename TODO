@@ -1,5 +1,6 @@
 TODO
-- Break up github.go
+- Break up indexHandler
+- Single email sending button
 - Loop over registered accounts and send them email
 - Flash message and sign out when OAuth token has expired/is invalid
 - Handle pagination for user repository list
