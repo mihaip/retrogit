@@ -26,7 +26,57 @@ type Digest struct {
 	RepoDigests []*RepoDigest
 }
 
-func (digest *Digest) Fetch(repos []github.Repository, githubClient *github.Client) error {
+func newDigest(githubClient *github.Client) (*Digest, error) {
+	user, _, err := githubClient.Users.Get("")
+	if err != nil {
+		return nil, err
+	}
+
+	// The username parameter must be left blank so that we can get all of the
+	// repositories the user has access to, not just ones that they own.
+	repos, _, err := githubClient.Repositories.List("", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	orgs, _, err := githubClient.Organizations.List("", nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, org := range orgs {
+		orgRepos, _, err := githubClient.Repositories.ListByOrg(*org.Login, nil)
+		if err != nil {
+			return nil, err
+		}
+		newRepos := make([]github.Repository, len(repos)+len(orgRepos))
+		copy(newRepos, repos)
+		copy(newRepos[len(repos):], orgRepos)
+		repos = newRepos
+	}
+
+	now := time.Now()
+	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	digestEndTime := digestStartTime.AddDate(0, 0, 7)
+
+	// Only look at repos that may have activity in the digest interval.
+	var digestRepos []github.Repository
+	for _, repo := range repos {
+		if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt.After(digestStartTime) {
+			digestRepos = append(digestRepos, repo)
+		}
+	}
+	repos = digestRepos
+	digest := &Digest{
+		User:        user,
+		RepoDigests: make([]*RepoDigest, 0, len(repos)),
+		StartTime:   digestStartTime,
+		EndTime:     digestEndTime,
+	}
+	err = digest.fetch(repos, githubClient)
+	return digest, err
+}
+
+func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Client) error {
 	type RepoDigestResponse struct {
 		repoDigest *RepoDigest
 		err        error

@@ -18,7 +18,7 @@ type Account struct {
 	OAuthToken           oauth.Token `datastore:"-,"`
 }
 
-func GetAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
+func getAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
 	key := datastore.NewKey(c, "Account", "", int64(gitHubUserId), nil)
 	account := new(Account)
 	err := datastore.Get(c, key, account)
@@ -30,7 +30,7 @@ func GetAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
 	return account, err
 }
 
-func (account *Account) Put(c appengine.Context) error {
+func (account *Account) put(c appengine.Context) error {
 	w := new(bytes.Buffer)
 	err := gob.NewEncoder(w).Encode(&account.OAuthToken)
 	if err != nil {
