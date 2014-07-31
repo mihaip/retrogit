@@ -1,0 +1,3 @@
+cron:
+- url: /digest/cron
+  schedule: every day 00:00
