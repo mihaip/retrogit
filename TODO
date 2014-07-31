@@ -1,7 +1,7 @@
 TODO
 - Break up indexHandler
 - Flash message when sending a single email
-- Loop over registered accounts and send them email
+- Use task queue for sending out of digests, for better parallelism and retry behavior
 - Flash message and sign out when OAuth token has expired/is invalid
 - Handle pagination for user repository list
 - Handle pagination for user organization list

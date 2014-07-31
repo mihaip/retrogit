@@ -3,6 +3,8 @@ package githop
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -49,6 +51,7 @@ func init() {
 	router = mux.NewRouter()
 	router.HandleFunc("/", indexHandler).Name("index")
 	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
+	router.HandleFunc("/digest/cron", digestCronHandler)
 	router.HandleFunc("/session/sign-in", signInHandler).Name("sign-in")
 	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out")
 	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
@@ -82,7 +85,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	account, err := getAccount(appengine.NewContext(r), userId)
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
 	if account == nil {
 		// Can't look up the account, session cookie must be invalid, clear it.
 		indexUrl, _ := router.Get("sign-out").URL()
@@ -94,7 +98,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oauthTransport := githubOAuthTransport(r)
+	oauthTransport := githubOAuthTransport(c)
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
@@ -124,26 +128,50 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oauthTransport := githubOAuthTransport(r)
+	err = sendDigestForAccount(account, c)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	indexUrl, _ := router.Get("index").URL()
+	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+}
+
+func digestCronHandler(w http.ResponseWriter, r *http.Request) {
+	var accounts []Account
+	c := appengine.NewContext(r)
+	getAllAccounts(c, &accounts)
+	for _, account := range accounts {
+		c.Infof("Sending digest for %d...", account.GitHubUserId)
+		err := sendDigestForAccount(&account, c)
+		if err != nil {
+			c.Errorf("  Error: %s", err.Error())
+		} else {
+			c.Infof("  Sent!")
+		}
+	}
+	fmt.Fprint(w, "Done")
+}
+
+func sendDigestForAccount(account *Account, c appengine.Context) error {
+	oauthTransport := githubOAuthTransport(c)
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
 	digest, err := newDigest(githubClient)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	var digestHtml bytes.Buffer
 	if err := templates.ExecuteTemplate(&digestHtml, "digest", digest); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	emails, _, err := githubClient.Users.ListEmails(nil)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	var primaryVerified *string
 	for _, email := range emails {
@@ -154,8 +182,7 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if primaryVerified == nil {
-		http.Error(w, "No verified email addresses found in GitHub account", http.StatusBadRequest)
-		return
+		return errors.New("No verified email addresses found in GitHub account")
 	}
 
 	digestMessage := &mail.Message{
@@ -164,18 +191,14 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 		Subject:  "GitHop Digest",
 		HTMLBody: digestHtml.String(),
 	}
-	if err := mail.Send(c, digestMessage); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	indexUrl, _ := router.Get("index").URL()
-	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+	err = mail.Send(c, digestMessage)
+	return err
 }
 
 func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
-	oauthTransport := githubOAuthTransport(r)
+	c := appengine.NewContext(r)
+	oauthTransport := githubOAuthTransport(c)
 	token, err := oauthTransport.Exchange(code)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -194,7 +217,7 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		GitHubUserId: *user.ID,
 		OAuthToken:   *token,
 	}
-	err = account.put(appengine.NewContext(r))
+	err = account.put(c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -207,12 +230,11 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 }
 
-func githubOAuthTransport(r *http.Request) *oauth.Transport {
-	appengineContext := appengine.NewContext(r)
-	appengineTransport := &urlfetch.Transport{Context: appengineContext}
+func githubOAuthTransport(c appengine.Context) *oauth.Transport {
+	appengineTransport := &urlfetch.Transport{Context: c}
 	cachingTransport := &CachingTransport{
 		Transport: appengineTransport,
-		Context:   appengineContext,
+		Context:   c,
 	}
 	return &oauth.Transport{
 		Config:    &githubOauthConfig,

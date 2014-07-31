@@ -56,7 +56,7 @@ func newDigest(githubClient *github.Client) (*Digest, error) {
 
 	now := time.Now()
 	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	digestEndTime := digestStartTime.AddDate(0, 0, 7)
+	digestEndTime := digestStartTime.AddDate(0, 0, 1)
 
 	// Only look at repos that may have activity in the digest interval.
 	var digestRepos []github.Repository

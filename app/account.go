@@ -30,6 +30,22 @@ func getAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
 	return account, err
 }
 
+func getAllAccounts(c appengine.Context, accounts *[]Account) error {
+	q := datastore.NewQuery("Account")
+	_, err := q.GetAll(c, accounts)
+	if err != nil {
+		return err
+	}
+	for i, _ := range *accounts {
+		r := bytes.NewBuffer((*accounts)[i].OAuthTokenSerialized)
+		err = gob.NewDecoder(r).Decode(&(*accounts)[i].OAuthToken)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (account *Account) put(c appengine.Context) error {
 	w := new(bytes.Buffer)
 	err := gob.NewEncoder(w).Encode(&account.OAuthToken)
