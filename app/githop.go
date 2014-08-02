@@ -165,9 +165,13 @@ func sendDigestForAccount(account *Account, c appengine.Context) error {
 	}
 
 	var digestHtml bytes.Buffer
+	digestHtml.WriteString("<html><head><style>")
+	digestHtml.Write(getDigestStyles())
+	digestHtml.WriteString("</style></head><body>")
 	if err := templates.ExecuteTemplate(&digestHtml, "digest", digest); err != nil {
 		return err
 	}
+	digestHtml.WriteString("</body></html>")
 
 	emails, _, err := githubClient.Users.ListEmails(nil)
 	if err != nil {
@@ -193,6 +197,14 @@ func sendDigestForAccount(account *Account, c appengine.Context) error {
 	}
 	err = mail.Send(c, digestMessage)
 	return err
+}
+
+func getDigestStyles() []byte {
+	b, err := ioutil.ReadFile("static/digest.css")
+	if err != nil {
+		log.Panicf("Could not read digest CSS: %s", err.Error())
+	}
+	return b
 }
 
 func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {

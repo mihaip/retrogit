@@ -1,25 +1,29 @@
 {{define "digest"}}
 
-{{.User.Login}}'s digest:
-<ul>
-  {{range $index, $repoDigest := .RepoDigests}}
-    <li>
-      <a href="https://github.com/{{.Repo.FullName}}">
-        {{.Repo.FullName}}
-      </a>
-      <ul>
-        {{range .Commits }}
-          <li>
-            <code><a href="https://github.com/{{$repoDigest.Repo.FullName}}/commit/{{.SHA}}">{{.SHA}}</a></code>
-            -
-            <i>{{.Commit.Author.Date}}</i>
-            <br>
-            <pre>{{.Commit.Message}}</pre>
-          </li>
-        {{end}}
-      </ul>
-    </li>
-  {{end}}
-</ul>
+<dl>
+
+<p>Activity a year ago for <a href="https://github.com/{{.User.Login}}" title={{.User.Name}}><img src={{.User.AvatarURL}} width="20" height="20" border="0">{{.User.Login}}</a>.</p>
+
+{{range $index, $repoDigest := .RepoDigests}}
+  <h2>
+    <a href="https://github.com/{{.Repo.FullName}}">
+      {{.Repo.FullName}}
+    </a>
+  </h2>
+
+  <div>
+    {{range .Commits }}
+      <div>
+        <pre>{{.Commit.Message}}</pre>
+        <div>
+          <a href="https://github.com/{{$repoDigest.Repo.FullName}}/commit/{{.SHA}}">{{.SHA}}</a>
+          <i>{{.Commit.Author.Date}}</i>
+        </div>
+      </div>
+    {{end}}
+  </div>
+{{end}}
+
+</dl>
 
 {{end}}
