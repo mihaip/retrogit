@@ -105,7 +105,9 @@ func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Clie
 			if r.err != nil {
 				return r.err
 			}
-			digest.RepoDigests = append(digest.RepoDigests, r.repoDigest)
+			if len(r.repoDigest.Commits) > 0 {
+				digest.RepoDigests = append(digest.RepoDigests, r.repoDigest)
+			}
 		}
 	}
 	sort.Sort(ByRepoFullName(digest.RepoDigests))
