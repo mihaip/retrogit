@@ -14,10 +14,10 @@
   <div>
     {{range .Commits }}
       <div>
-        <pre>{{.Commit.Message}}</pre>
+        <pre>{{.Message}}</pre>
         <div>
-          <a href="https://github.com/{{$repoDigest.Repo.FullName}}/commit/{{.SHA}}">{{.SHA}}</a>
-          <i>{{.Commit.Author.Date}}</i>
+          <a href="{{.URL}}">{{.DisplaySHA}}</a>
+          <i>{{.Date}}</i>
         </div>
       </div>
     {{end}}

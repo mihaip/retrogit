@@ -1,15 +1,24 @@
 package githop
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
 	"github.com/google/go-github/github"
 )
 
+type DigestCommit struct {
+	DisplaySHA string
+	URL string
+	Message *string
+	Date *time.Time
+	RepositoryCommit *github.RepositoryCommit
+}
+
 type RepoDigest struct {
 	Repo    *github.Repository
-	Commits []github.RepositoryCommit
+	Commits []DigestCommit
 }
 
 // sort.Interface implementation for sorting RepoDigests.
@@ -95,7 +104,18 @@ func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Clie
 			if err != nil {
 				ch <- &RepoDigestResponse{nil, err}
 			} else {
-				ch <- &RepoDigestResponse{&RepoDigest{&repo, commits}, nil}
+				digestCommits := make([]DigestCommit, 0, len(commits))
+				for i, _ := range commits {
+					commit := &commits[i]
+					digestCommits = append(digestCommits, DigestCommit{
+						DisplaySHA: (*commit.SHA)[:7],
+						URL: fmt.Sprintf("https://github.com/%s/commit/%s", *repo.FullName, *commit.SHA),
+						Message: commit.Commit.Message,
+						Date: commit.Commit.Author.Date,
+						RepositoryCommit: commit,
+					})
+				}
+				ch <- &RepoDigestResponse{&RepoDigest{&repo, digestCommits}, nil}
 			}
 		}(repo)
 	}
