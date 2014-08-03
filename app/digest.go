@@ -9,11 +9,21 @@ import (
 )
 
 type DigestCommit struct {
-	DisplaySHA string
-	URL string
-	Message *string
-	Date *time.Time
+	DisplaySHA       string
+	URL              string
+	Message          *string
+	Date             *time.Time
 	RepositoryCommit *github.RepositoryCommit
+}
+
+func newDigestCommit(commit *github.RepositoryCommit, repo *github.Repository) DigestCommit {
+	return DigestCommit{
+		DisplaySHA:       (*commit.SHA)[:7],
+		URL:              fmt.Sprintf("https://github.com/%s/commit/%s", *repo.FullName, *commit.SHA),
+		Message:          commit.Commit.Message,
+		Date:             commit.Commit.Author.Date,
+		RepositoryCommit: commit,
+	}
 }
 
 type RepoDigest struct {
@@ -65,7 +75,7 @@ func newDigest(githubClient *github.Client) (*Digest, error) {
 
 	now := time.Now()
 	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	digestEndTime := digestStartTime.AddDate(0, 0, 1)
+	digestEndTime := digestStartTime.AddDate(0, 0, 7)
 
 	// Only look at repos that may have activity in the digest interval.
 	var digestRepos []github.Repository
@@ -106,14 +116,7 @@ func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Clie
 			} else {
 				digestCommits := make([]DigestCommit, 0, len(commits))
 				for i, _ := range commits {
-					commit := &commits[i]
-					digestCommits = append(digestCommits, DigestCommit{
-						DisplaySHA: (*commit.SHA)[:7],
-						URL: fmt.Sprintf("https://github.com/%s/commit/%s", *repo.FullName, *commit.SHA),
-						Message: commit.Commit.Message,
-						Date: commit.Commit.Author.Date,
-						RepositoryCommit: commit,
-					})
+					digestCommits = append(digestCommits, newDigestCommit(&commits[i], &repo))
 				}
 				ch <- &RepoDigestResponse{&RepoDigest{&repo, digestCommits}, nil}
 			}
