@@ -14,7 +14,10 @@
   <div>
     {{range .Commits }}
       <div>
-        <pre>{{.Message}}</pre>
+        <h3>{{.Title}}</h3>
+        {{if .Message}}
+          <pre>{{.Message}}</pre>
+        {{end}}
         <div>
           <a href="{{.URL}}">{{.DisplaySHA}}</a>
           <i>{{.Date}}</i>

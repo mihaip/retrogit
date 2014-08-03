@@ -49,23 +49,28 @@ dl > div > div {
 }
 
 /* Commit message */
+dl > div > div > h3 {
+  padding: 8px;
+  margin: 0;
+}
+
 dl > div > div > pre {
   margin: 0;
-  padding: 8px;
+  padding: 0 8px 8px;
 }
 
 /* Commit footer */
-dl > div > div > pre + div {
+dl > div > div > div {
   background: #fff;
   border-top: solid 1px #ddd;
   padding: 8px;
 }
 
-dl > div > div > pre + div > i {
+dl > div > div > div > i {
   color: #666;
 }
 
-dl > div > div > pre + div > a {
+dl > div > div > div > a {
   font-family: monospace;
   float: right;
 }

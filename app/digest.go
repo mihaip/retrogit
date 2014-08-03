@@ -3,6 +3,7 @@ package githop
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/github"
@@ -11,16 +12,24 @@ import (
 type DigestCommit struct {
 	DisplaySHA       string
 	URL              string
-	Message          *string
+	Title            string
+	Message          string
 	Date             *time.Time
 	RepositoryCommit *github.RepositoryCommit
 }
 
 func newDigestCommit(commit *github.RepositoryCommit, repo *github.Repository) DigestCommit {
+	messagePieces := strings.SplitN(*commit.Commit.Message, "\n", 2)
+	title := messagePieces[0]
+	message := ""
+	if len(messagePieces) == 2 {
+		message = messagePieces[1]
+	}
 	return DigestCommit{
 		DisplaySHA:       (*commit.SHA)[:7],
 		URL:              fmt.Sprintf("https://github.com/%s/commit/%s", *repo.FullName, *commit.SHA),
-		Message:          commit.Commit.Message,
+		Title:            title,
+		Message:          message,
 		Date:             commit.Commit.Author.Date,
 		RepositoryCommit: commit,
 	}
@@ -75,7 +84,7 @@ func newDigest(githubClient *github.Client) (*Digest, error) {
 
 	now := time.Now()
 	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	digestEndTime := digestStartTime.AddDate(0, 0, 7)
+	digestEndTime := digestStartTime.AddDate(0, 0, 1)
 
 	// Only look at repos that may have activity in the digest interval.
 	var digestRepos []github.Repository
