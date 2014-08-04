@@ -3,6 +3,7 @@ package githop
 import (
 	"bytes"
 	"encoding/gob"
+	"time"
 
 	"appengine"
 	"appengine/datastore"
@@ -15,7 +16,9 @@ type Account struct {
 	// The datastore API doesn't store maps, and the token contains one. We
 	// thefore store a gob-serialized version instead.
 	OAuthTokenSerialized []byte
-	OAuthToken           oauth.Token `datastore:"-,"`
+	OAuthToken           oauth.Token    `datastore:"-,"`
+	TimezoneName         string         `datastore:",noindex"`
+	TimezoneLocation     *time.Location `datastore:"-,"`
 }
 
 func getAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
@@ -25,9 +28,22 @@ func getAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	r := bytes.NewBuffer(account.OAuthTokenSerialized)
 	err = gob.NewDecoder(r).Decode(&account.OAuthToken)
-	return account, err
+	if err != nil {
+		return nil, err
+	}
+
+	if len(account.TimezoneName) == 0 {
+		account.TimezoneName = "America/Los_Angeles"
+	}
+	account.TimezoneLocation, err = time.LoadLocation(account.TimezoneName)
+	if err != nil {
+		return nil, err
+	}
+
+	return account, nil
 }
 
 func getAllAccounts(c appengine.Context, accounts *[]Account) error {

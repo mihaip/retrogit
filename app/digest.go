@@ -14,11 +14,11 @@ type DigestCommit struct {
 	URL              string
 	Title            string
 	Message          string
-	Date             *time.Time
+	Date             time.Time
 	RepositoryCommit *github.RepositoryCommit
 }
 
-func newDigestCommit(commit *github.RepositoryCommit, repo *github.Repository) DigestCommit {
+func newDigestCommit(commit *github.RepositoryCommit, repo *github.Repository, location *time.Location) DigestCommit {
 	messagePieces := strings.SplitN(*commit.Commit.Message, "\n", 2)
 	title := messagePieces[0]
 	message := ""
@@ -30,9 +30,13 @@ func newDigestCommit(commit *github.RepositoryCommit, repo *github.Repository) D
 		URL:              fmt.Sprintf("https://github.com/%s/commit/%s", *repo.FullName, *commit.SHA),
 		Title:            title,
 		Message:          message,
-		Date:             commit.Commit.Author.Date,
+		Date:             commit.Commit.Author.Date.In(location),
 		RepositoryCommit: commit,
 	}
+}
+
+func (commit DigestCommit) DisplayDate() string {
+	return commit.Date.Format("3:04pm")
 }
 
 type RepoDigest struct {
@@ -48,13 +52,14 @@ func (a ByRepoFullName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByRepoFullName) Less(i, j int) bool { return *a[i].Repo.FullName < *a[j].Repo.FullName }
 
 type Digest struct {
-	User        *github.User
-	StartTime   time.Time
-	EndTime     time.Time
-	RepoDigests []*RepoDigest
+	User             *github.User
+	StartTime        time.Time
+	EndTime          time.Time
+	TimezoneLocation *time.Location
+	RepoDigests      []*RepoDigest
 }
 
-func newDigest(githubClient *github.Client) (*Digest, error) {
+func newDigest(githubClient *github.Client, account *Account) (*Digest, error) {
 	user, _, err := githubClient.Users.Get("")
 	if err != nil {
 		return nil, err
@@ -82,7 +87,7 @@ func newDigest(githubClient *github.Client) (*Digest, error) {
 		repos = newRepos
 	}
 
-	now := time.Now()
+	now := time.Now().In(account.TimezoneLocation)
 	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	digestEndTime := digestStartTime.AddDate(0, 0, 1)
 
@@ -95,10 +100,11 @@ func newDigest(githubClient *github.Client) (*Digest, error) {
 	}
 	repos = digestRepos
 	digest := &Digest{
-		User:        user,
-		RepoDigests: make([]*RepoDigest, 0, len(repos)),
-		StartTime:   digestStartTime,
-		EndTime:     digestEndTime,
+		User:             user,
+		RepoDigests:      make([]*RepoDigest, 0, len(repos)),
+		StartTime:        digestStartTime,
+		EndTime:          digestEndTime,
+		TimezoneLocation: account.TimezoneLocation,
 	}
 	err = digest.fetch(repos, githubClient)
 	return digest, err
@@ -125,7 +131,7 @@ func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Clie
 			} else {
 				digestCommits := make([]DigestCommit, 0, len(commits))
 				for i, _ := range commits {
-					digestCommits = append(digestCommits, newDigestCommit(&commits[i], &repo))
+					digestCommits = append(digestCommits, newDigestCommit(&commits[i], &repo, digest.TimezoneLocation))
 				}
 				ch <- &RepoDigestResponse{&RepoDigest{&repo, digestCommits}, nil}
 			}
@@ -144,4 +150,8 @@ func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Clie
 	}
 	sort.Sort(ByRepoFullName(digest.RepoDigests))
 	return nil
+}
+
+func (digest *Digest) DisplayDate() string {
+	return digest.StartTime.Format("January 2, 2006 was a Monday")
 }

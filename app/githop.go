@@ -102,7 +102,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
-	digest, err := newDigest(githubClient)
+	digest, err := newDigest(githubClient, account)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -159,7 +159,7 @@ func sendDigestForAccount(account *Account, c appengine.Context) error {
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
-	digest, err := newDigest(githubClient)
+	digest, err := newDigest(githubClient, account)
 	if err != nil {
 		return err
 	}
