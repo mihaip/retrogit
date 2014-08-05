@@ -9,12 +9,18 @@ import (
 	"github.com/google/go-github/github"
 )
 
+const (
+	DisplayDateFormat = "3:04pm"
+	DisplayDateTooltipFormat = "Monday January 2 3:04pm"
+)
+
 type DigestCommit struct {
 	DisplaySHA       string
 	URL              string
 	Title            string
 	Message          string
-	Date             time.Time
+	PushDate         time.Time
+	CommitDate       time.Time
 	RepositoryCommit *github.RepositoryCommit
 }
 
@@ -30,13 +36,24 @@ func newDigestCommit(commit *github.RepositoryCommit, repo *github.Repository, l
 		URL:              fmt.Sprintf("https://github.com/%s/commit/%s", *repo.FullName, *commit.SHA),
 		Title:            title,
 		Message:          message,
-		Date:             commit.Commit.Author.Date.In(location),
+		PushDate:         commit.Commit.Committer.Date.In(location),
+		CommitDate:       commit.Commit.Author.Date.In(location),
 		RepositoryCommit: commit,
 	}
 }
 
 func (commit DigestCommit) DisplayDate() string {
-	return commit.Date.Format("3:04pm")
+	// Prefer the date the comit was pushed, since that's what GitHub filters
+	// and sorts by.
+	return commit.PushDate.Format(DisplayDateFormat)
+}
+
+func (commit DigestCommit) DisplayDateTooltip() string {
+	// But show the full details in a tooltip
+	return fmt.Sprintf(
+		"Pushed at %s\nCommited at %s",
+		commit.PushDate.Format(DisplayDateTooltipFormat),
+		commit.CommitDate.Format(DisplayDateTooltipFormat))
 }
 
 type RepoDigest struct {
@@ -123,8 +140,8 @@ func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Clie
 				*repo.Name,
 				&github.CommitsListOptions{
 					Author: *digest.User.Login,
-					Since:  digest.StartTime,
-					Until:  digest.EndTime,
+					Since:  digest.StartTime.UTC(),
+					Until:  digest.EndTime.UTC(),
 				})
 			if err != nil {
 				ch <- &RepoDigestResponse{nil, err}
