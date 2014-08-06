@@ -29,21 +29,27 @@ func getAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
 		return nil, err
 	}
 
-	r := bytes.NewBuffer(account.OAuthTokenSerialized)
-	err = gob.NewDecoder(r).Decode(&account.OAuthToken)
+	err = initAccount(account)
 	if err != nil {
 		return nil, err
 	}
+	return account, nil
+}
 
+func initAccount(account *Account) error {
+	r := bytes.NewBuffer(account.OAuthTokenSerialized)
+	err := gob.NewDecoder(r).Decode(&account.OAuthToken)
+	if err != nil {
+		return err
+	}
 	if len(account.TimezoneName) == 0 {
 		account.TimezoneName = "America/Los_Angeles"
 	}
 	account.TimezoneLocation, err = time.LoadLocation(account.TimezoneName)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	return account, nil
+	return nil
 }
 
 func getAllAccounts(c appengine.Context, accounts *[]Account) error {
@@ -53,8 +59,7 @@ func getAllAccounts(c appengine.Context, accounts *[]Account) error {
 		return err
 	}
 	for i, _ := range *accounts {
-		r := bytes.NewBuffer((*accounts)[i].OAuthTokenSerialized)
-		err = gob.NewDecoder(r).Decode(&(*accounts)[i].OAuthToken)
+		err = initAccount(&(*accounts)[i])
 		if err != nil {
 			return err
 		}
