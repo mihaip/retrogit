@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	DisplayDateFormat        = "3:04pm"
-	DisplayDateTooltipFormat = "Monday January 2 3:04pm"
+	CommitDisplayDateFormat        = "3:04pm"
+	CommitDisplayDateTooltipFormat = "Monday January 2 3:04pm"
+	DigestDisplayDateFormat        = "January 2, 2006 was a Monday"
 )
 
 type DigestCommit struct {
@@ -45,15 +46,15 @@ func newDigestCommit(commit *github.RepositoryCommit, repo *github.Repository, l
 func (commit DigestCommit) DisplayDate() string {
 	// Prefer the date the comit was pushed, since that's what GitHub filters
 	// and sorts by.
-	return commit.PushDate.Format(DisplayDateFormat)
+	return commit.PushDate.Format(CommitDisplayDateFormat)
 }
 
 func (commit DigestCommit) DisplayDateTooltip() string {
 	// But show the full details in a tooltip
 	return fmt.Sprintf(
 		"Pushed at %s\nCommited at %s",
-		commit.PushDate.Format(DisplayDateTooltipFormat),
-		commit.CommitDate.Format(DisplayDateTooltipFormat))
+		commit.PushDate.Format(CommitDisplayDateTooltipFormat),
+		commit.CommitDate.Format(CommitDisplayDateTooltipFormat))
 }
 
 type RepoDigest struct {
@@ -170,6 +171,15 @@ func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Clie
 	return nil
 }
 
+func (digest *Digest) Empty() bool {
+	for _, repoDigest := range digest.RepoDigests {
+		if len(repoDigest.Commits) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func (digest *Digest) DisplayDate() string {
-	return digest.StartTime.Format("January 2, 2006 was a Monday")
+	return digest.StartTime.Format(DigestDisplayDateFormat)
 }

@@ -133,7 +133,7 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = sendDigestForAccount(account, c)
+	_, err = sendDigestForAccount(account, c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -149,24 +149,29 @@ func digestCronHandler(w http.ResponseWriter, r *http.Request) {
 	getAllAccounts(c, &accounts)
 	for _, account := range accounts {
 		c.Infof("Sending digest for %d...", account.GitHubUserId)
-		err := sendDigestForAccount(&account, c)
+		sent, err := sendDigestForAccount(&account, c)
 		if err != nil {
 			c.Errorf("  Error: %s", err.Error())
-		} else {
+		} else if sent {
 			c.Infof("  Sent!")
+		} else {
+			c.Infof("  Not sent, digest was empty")
 		}
 	}
 	fmt.Fprint(w, "Done")
 }
 
-func sendDigestForAccount(account *Account, c appengine.Context) error {
+func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	oauthTransport := githubOAuthTransport(c)
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
 	digest, err := newDigest(githubClient, account)
 	if err != nil {
-		return err
+		return false, err
+	}
+	if digest.Empty() {
+		return false, nil
 	}
 
 	var digestHtml bytes.Buffer
@@ -174,13 +179,13 @@ func sendDigestForAccount(account *Account, c appengine.Context) error {
 	digestHtml.Write(getDigestStyles())
 	digestHtml.WriteString("</style></head><body>")
 	if err := templates.ExecuteTemplate(&digestHtml, "digest", digest); err != nil {
-		return err
+		return false, err
 	}
 	digestHtml.WriteString("</body></html>")
 
 	emails, _, err := githubClient.Users.ListEmails(nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	var primaryVerified *string
 	for _, email := range emails {
@@ -191,7 +196,7 @@ func sendDigestForAccount(account *Account, c appengine.Context) error {
 		}
 	}
 	if primaryVerified == nil {
-		return errors.New("No verified email addresses found in GitHub account")
+		return false, errors.New("No verified email addresses found in GitHub account")
 	}
 
 	digestMessage := &mail.Message{
@@ -201,7 +206,7 @@ func sendDigestForAccount(account *Account, c appengine.Context) error {
 		HTMLBody: digestHtml.String(),
 	}
 	err = mail.Send(c, digestMessage)
-	return err
+	return true, err
 }
 
 func getDigestStyles() []byte {
