@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
 	"appengine"
 	"appengine/mail"
@@ -50,11 +51,15 @@ func init() {
 
 	router = mux.NewRouter()
 	router.HandleFunc("/", indexHandler).Name("index")
-	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
-	router.HandleFunc("/digest/cron", digestCronHandler)
+
 	router.HandleFunc("/session/sign-in", signInHandler).Name("sign-in")
 	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out")
 	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
+
+	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
+	router.HandleFunc("/digest/cron", digestCronHandler)
+
+	router.HandleFunc("/admin/digest", digestAdminHandler)
 	http.Handle("/", router)
 }
 
@@ -240,6 +245,39 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+}
+
+func digestAdminHandler(w http.ResponseWriter, r *http.Request) {
+	userId, err := strconv.Atoi(r.FormValue("user_id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
+	if account == nil {
+		http.Error(w, "Couldn't find account", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	oauthTransport := githubOAuthTransport(c)
+	oauthTransport.Token = &account.OAuthToken
+	githubClient := github.NewClient(oauthTransport.Client())
+
+	digest, err := newDigest(githubClient, account)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	var data = map[string]interface{}{
+		"Digest": digest,
+	}
+	if err := templates.ExecuteTemplate(w, "digest-admin", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func githubOAuthTransport(c appengine.Context) *oauth.Transport {

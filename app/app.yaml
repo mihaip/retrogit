@@ -10,6 +10,9 @@ handlers:
 - url: /digest/cron
   script: _go_app
   login: admin
+- url: /admin/.*
+  script: _go_app
+  login: admin
 - url: /.*
   script: _go_app
   secure: always

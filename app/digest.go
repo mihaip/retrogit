@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DisplayDateFormat = "3:04pm"
+	DisplayDateFormat        = "3:04pm"
 	DisplayDateTooltipFormat = "Monday January 2 3:04pm"
 )
 
