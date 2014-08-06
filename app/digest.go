@@ -111,7 +111,8 @@ func newDigest(githubClient *github.Client, account *Account) (*Digest, error) {
 	// Only look at repos that may have activity in the digest interval.
 	var digestRepos []github.Repository
 	for _, repo := range repos {
-		if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt.After(digestStartTime) {
+		if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt != nil &&
+			repo.PushedAt.After(digestStartTime) {
 			digestRepos = append(digestRepos, repo)
 		}
 	}
