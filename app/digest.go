@@ -69,12 +69,60 @@ func (a ByRepoFullName) Len() int           { return len(a) }
 func (a ByRepoFullName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByRepoFullName) Less(i, j int) bool { return *a[i].Repo.FullName < *a[j].Repo.FullName }
 
+type IntervalDigest struct {
+	yearDelta   int
+	StartTime   time.Time
+	EndTime     time.Time
+	RepoDigests []*RepoDigest
+	repos       []github.Repository
+}
+
+func (digest *IntervalDigest) Empty() bool {
+	for i := range digest.RepoDigests {
+		if len(digest.RepoDigests[i].Commits) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (digest *IntervalDigest) Header() string {
+	if digest.yearDelta == -1 {
+		return "1 Year Ago"
+	}
+	return fmt.Sprintf("%d Years Ago", -digest.yearDelta)
+}
+
+func (digest *IntervalDigest) Description() string {
+	commitCount := 0
+	for i := range digest.RepoDigests {
+		commitCount += len(digest.RepoDigests[i].Commits)
+	}
+	var formattedCommitCount string
+	if commitCount == 0 {
+		formattedCommitCount = "no commits"
+	} else if commitCount == 1 {
+		formattedCommitCount = "1 commit"
+	} else {
+		formattedCommitCount = fmt.Sprintf("%d commits", commitCount)
+	}
+	repoCount := len(digest.RepoDigests)
+	var formattedRepoCount string
+	if repoCount == 1 {
+		formattedRepoCount = "1 repository"
+	} else {
+		formattedRepoCount = fmt.Sprintf("%d repositories", repoCount)
+	}
+	return fmt.Sprintf("%s. You had %s in %s that day.",
+		digest.StartTime.Format(DigestDisplayDateFormat),
+		formattedCommitCount,
+		formattedRepoCount)
+}
+
 type Digest struct {
 	User             *github.User
-	StartTime        time.Time
-	EndTime          time.Time
 	TimezoneLocation *time.Location
-	RepoDigests      []*RepoDigest
+	IntervalDigests  []*IntervalDigest
 }
 
 func newDigest(githubClient *github.Client, account *Account) (*Digest, error) {
@@ -105,81 +153,106 @@ func newDigest(githubClient *github.Client, account *Account) (*Digest, error) {
 		repos = newRepos
 	}
 
-	now := time.Now().In(account.TimezoneLocation)
-	digestStartTime := time.Date(now.Year()-1, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	digestEndTime := digestStartTime.AddDate(0, 0, 1)
-
-	// Only look at repos that may have activity in the digest interval.
-	var digestRepos []github.Repository
+	oldestDigestTime := time.Now().In(account.TimezoneLocation)
 	for _, repo := range repos {
-		if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt != nil &&
-			repo.PushedAt.After(digestStartTime) {
-			digestRepos = append(digestRepos, repo)
+		repoTime := repo.CreatedAt.In(account.TimezoneLocation)
+		if repoTime.Before(oldestDigestTime) {
+			oldestDigestTime = repoTime
 		}
 	}
-	repos = digestRepos
+
+	intervalDigests := make([]*IntervalDigest, 0)
+	now := time.Now().In(account.TimezoneLocation)
+	for yearDelta := -1; ; yearDelta-- {
+		digestStartTime := time.Date(now.Year()+yearDelta, now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		if digestStartTime.Before(oldestDigestTime) {
+			break
+		}
+		digestEndTime := digestStartTime.AddDate(0, 0, 1)
+
+		// Only look at repos that may have activity in the digest interval.
+		var intervalRepos []github.Repository
+		for _, repo := range repos {
+			if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt != nil &&
+				repo.PushedAt.After(digestStartTime) {
+				intervalRepos = append(intervalRepos, repo)
+			}
+		}
+
+		intervalDigests = append(intervalDigests, &IntervalDigest{
+			yearDelta:   yearDelta,
+			repos:       intervalRepos,
+			RepoDigests: make([]*RepoDigest, 0, len(intervalRepos)),
+			StartTime:   digestStartTime,
+			EndTime:     digestEndTime,
+		})
+	}
+
 	digest := &Digest{
 		User:             user,
-		RepoDigests:      make([]*RepoDigest, 0, len(repos)),
-		StartTime:        digestStartTime,
-		EndTime:          digestEndTime,
 		TimezoneLocation: account.TimezoneLocation,
+		IntervalDigests:  intervalDigests,
 	}
-	err = digest.fetch(repos, githubClient)
+
+	err = digest.fetch(githubClient)
 	return digest, err
 }
 
-func (digest *Digest) fetch(repos []github.Repository, githubClient *github.Client) error {
+func (digest *Digest) fetch(githubClient *github.Client) error {
 	type RepoDigestResponse struct {
-		repoDigest *RepoDigest
-		err        error
+		intervalDigest *IntervalDigest
+		repoDigest     *RepoDigest
+		err            error
 	}
+	fetchCount := 0
 	ch := make(chan *RepoDigestResponse)
-	for _, repo := range repos {
-		go func(repo github.Repository) {
-			commits, _, err := githubClient.Repositories.ListCommits(
-				*repo.Owner.Login,
-				*repo.Name,
-				&github.CommitsListOptions{
-					Author: *digest.User.Login,
-					Since:  digest.StartTime.UTC(),
-					Until:  digest.EndTime.UTC(),
-				})
-			if err != nil {
-				ch <- &RepoDigestResponse{nil, err}
-			} else {
-				digestCommits := make([]DigestCommit, 0, len(commits))
-				for i, _ := range commits {
-					digestCommits = append(digestCommits, newDigestCommit(&commits[i], &repo, digest.TimezoneLocation))
+	for _, intervalDigest := range digest.IntervalDigests {
+		for j := range intervalDigest.repos {
+			repo := &intervalDigest.repos[j]
+			go func(intervalDigest *IntervalDigest, repo *github.Repository) {
+				commits, _, err := githubClient.Repositories.ListCommits(
+					*repo.Owner.Login,
+					*repo.Name,
+					&github.CommitsListOptions{
+						Author: *digest.User.Login,
+						Since:  intervalDigest.StartTime.UTC(),
+						Until:  intervalDigest.EndTime.UTC(),
+					})
+				if err != nil {
+					ch <- &RepoDigestResponse{nil, nil, err}
+				} else {
+					digestCommits := make([]DigestCommit, 0, len(commits))
+					for i, _ := range commits {
+						digestCommits = append(digestCommits, newDigestCommit(&commits[i], repo, digest.TimezoneLocation))
+					}
+					ch <- &RepoDigestResponse{intervalDigest, &RepoDigest{repo, digestCommits}, nil}
 				}
-				ch <- &RepoDigestResponse{&RepoDigest{&repo, digestCommits}, nil}
-			}
-		}(repo)
+			}(intervalDigest, repo)
+			fetchCount++
+		}
 	}
-	for i := 0; i < len(repos); i++ {
+	for i := 0; i < fetchCount; i++ {
 		select {
 		case r := <-ch:
 			if r.err != nil {
 				return r.err
 			}
 			if len(r.repoDigest.Commits) > 0 {
-				digest.RepoDigests = append(digest.RepoDigests, r.repoDigest)
+				r.intervalDigest.RepoDigests = append(r.intervalDigest.RepoDigests, r.repoDigest)
 			}
 		}
 	}
-	sort.Sort(ByRepoFullName(digest.RepoDigests))
+	nonEmptyIntervalDigests := make([]*IntervalDigest, 0, len(digest.IntervalDigests))
+	for _, intervalDigest := range digest.IntervalDigests {
+		if !intervalDigest.Empty() {
+			nonEmptyIntervalDigests = append(nonEmptyIntervalDigests, intervalDigest)
+			sort.Sort(ByRepoFullName(intervalDigest.RepoDigests))
+		}
+	}
+	digest.IntervalDigests = nonEmptyIntervalDigests
 	return nil
 }
 
 func (digest *Digest) Empty() bool {
-	for _, repoDigest := range digest.RepoDigests {
-		if len(repoDigest.Commits) > 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func (digest *Digest) DisplayDate() string {
-	return digest.StartTime.Format(DigestDisplayDateFormat)
+	return len(digest.IntervalDigests) > 0
 }

@@ -19,7 +19,6 @@ dl a {
 /* Digest intro paragraph */
 dl > p {
   font-size: 12pt;
-
 }
 
 /* User link */
@@ -33,11 +32,19 @@ dl > p > a img {
   padding-right: 3px;
 }
 
-/* Repository header */
-dl > h2 {
-  font-size: 20pt;
+/* Interval header */
+dl > h1 {
+  font-size: 24pt;
   font-weight: bold;
   margin: .75em 0 .5em 0;
+  border-bottom: solid 1px #ddd;
+}
+
+/* Repository header */
+dl > h2 {
+  font-size: 18pt;
+  font-weight: bold;
+  margin: .5em 0;
 }
 
 /* Commit */

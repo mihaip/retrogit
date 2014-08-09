@@ -2,29 +2,36 @@
 
 <dl>
 
-<p>{{.DisplayDate}}. Here's the GitHub activity on that day for <a href="https://github.com/{{.User.Login}}" title={{.User.Name}}><img src={{.User.AvatarURL}} width="20" height="20" border="0">{{.User.Login}}</a>.</p>
+<p>GitHub activity time machine for <a href="https://github.com/{{.User.Login}}" title={{.User.Name}}><img src={{.User.AvatarURL}} width="20" height="20" border="0">{{.User.Login}}</a>.</p>
 
-{{range $index, $repoDigest := .RepoDigests}}
-  <h2>
-    <a href="https://github.com/{{.Repo.FullName}}">
-      {{.Repo.FullName}}
-    </a>
-  </h2>
+{{range .IntervalDigests }}
+  <h1>{{.Header}}</h1>
 
-  <div>
-    {{range .Commits }}
-      <div>
-        <h3>{{.Title}}</h3>
-        {{if .Message}}
-          <pre>{{.Message}}</pre>
-        {{end}}
+  <p>{{.Description}}</p>
+
+  {{range $index, $repoDigest := .RepoDigests}}
+    <h2>
+      <a href="https://github.com/{{.Repo.FullName}}">
+        {{.Repo.FullName}}
+      </a>
+    </h2>
+
+    <div>
+      {{range .Commits }}
         <div>
-          <a href="{{.URL}}">{{.DisplaySHA}}</a>
-          <i title={{.DisplayDateTooltip}}>{{.DisplayDate}}</i>
+          <h3>{{.Title}}</h3>
+          {{if .Message}}
+            <pre>{{.Message}}</pre>
+          {{end}}
+          <div>
+            <a href="{{.URL}}">{{.DisplaySHA}}</a>
+            <i title={{.DisplayDateTooltip}}>{{.DisplayDate}}</i>
+          </div>
         </div>
-      </div>
-    {{end}}
-  </div>
+      {{end}}
+    </div>
+  {{end}}
+
 {{end}}
 
 </dl>
