@@ -221,9 +221,9 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 				if err != nil {
 					ch <- &RepoDigestResponse{nil, nil, err}
 				} else {
-					digestCommits := make([]DigestCommit, 0, len(commits))
-					for i, _ := range commits {
-						digestCommits = append(digestCommits, newDigestCommit(&commits[i], repo, digest.TimezoneLocation))
+					digestCommits := make([]DigestCommit, len(commits))
+					for i := range commits {
+						digestCommits[len(commits)-i-1] = newDigestCommit(&commits[i], repo, digest.TimezoneLocation)
 					}
 					ch <- &RepoDigestResponse{intervalDigest, &RepoDigest{repo, digestCommits}, nil}
 				}
