@@ -254,5 +254,5 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 }
 
 func (digest *Digest) Empty() bool {
-	return len(digest.IntervalDigests) > 0
+	return len(digest.IntervalDigests) == 0
 }
