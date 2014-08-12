@@ -11,9 +11,7 @@
 
   {{range $index, $repoDigest := .RepoDigests}}
     <h2>
-      <a href="https://github.com/{{.Repo.FullName}}">
-        {{.Repo.FullName}}
-      </a>
+      <a href="{{.Repo.HTMLURL}}">{{.Repo.FullName}}</a>
     </h2>
 
     <div>
