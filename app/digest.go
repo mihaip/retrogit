@@ -74,7 +74,7 @@ type IntervalDigest struct {
 	StartTime   time.Time
 	EndTime     time.Time
 	RepoDigests []*RepoDigest
-	repos       []github.Repository
+	repos       []*github.Repository
 }
 
 func (digest *IntervalDigest) Empty() bool {
@@ -171,8 +171,9 @@ func newDigest(githubClient *github.Client, account *Account) (*Digest, error) {
 		digestEndTime := digestStartTime.AddDate(0, 0, 1)
 
 		// Only look at repos that may have activity in the digest interval.
-		var intervalRepos []github.Repository
-		for _, repo := range repos {
+		var intervalRepos []*github.Repository
+		for i := range repos {
+			repo := &repos[i]
 			if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt != nil &&
 				repo.PushedAt.After(digestStartTime) {
 				intervalRepos = append(intervalRepos, repo)
@@ -207,8 +208,7 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 	fetchCount := 0
 	ch := make(chan *RepoDigestResponse)
 	for _, intervalDigest := range digest.IntervalDigests {
-		for j := range intervalDigest.repos {
-			repo := &intervalDigest.repos[j]
+		for _, repo := range intervalDigest.repos {
 			go func(intervalDigest *IntervalDigest, repo *github.Repository) {
 				commits, _, err := githubClient.Repositories.ListCommits(
 					*repo.Owner.Login,
