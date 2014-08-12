@@ -25,7 +25,7 @@ type DigestCommit struct {
 	RepositoryCommit *github.RepositoryCommit
 }
 
-func newDigestCommit(commit *github.RepositoryCommit, repo *github.Repository, location *time.Location) DigestCommit {
+func newDigestCommit(commit *github.RepositoryCommit, repo *Repo, location *time.Location) DigestCommit {
 	messagePieces := strings.SplitN(*commit.Commit.Message, "\n", 2)
 	title := messagePieces[0]
 	message := ""
@@ -58,7 +58,7 @@ func (commit DigestCommit) DisplayDateTooltip() string {
 }
 
 type RepoDigest struct {
-	Repo    *github.Repository
+	Repo    *Repo
 	Commits []DigestCommit
 }
 
@@ -74,7 +74,7 @@ type IntervalDigest struct {
 	StartTime   time.Time
 	EndTime     time.Time
 	RepoDigests []*RepoDigest
-	repos       []*github.Repository
+	repos       []*Repo
 }
 
 func (digest *IntervalDigest) Empty() bool {
@@ -131,36 +131,12 @@ func newDigest(githubClient *github.Client, account *Account) (*Digest, error) {
 		return nil, err
 	}
 
-	// The username parameter must be left blank so that we can get all of the
-	// repositories the user has access to, not just ones that they own.
-	repos, _, err := githubClient.Repositories.List("", nil)
+	repos, err := getRepos(githubClient, user)
 	if err != nil {
 		return nil, err
 	}
 
-	orgs, _, err := githubClient.Organizations.List("", nil)
-	if err != nil {
-		return nil, err
-	}
-	for _, org := range orgs {
-		orgRepos, _, err := githubClient.Repositories.ListByOrg(*org.Login, nil)
-		if err != nil {
-			return nil, err
-		}
-		newRepos := make([]github.Repository, len(repos)+len(orgRepos))
-		copy(newRepos, repos)
-		copy(newRepos[len(repos):], orgRepos)
-		repos = newRepos
-	}
-
-	oldestDigestTime := time.Now().In(account.TimezoneLocation)
-	for _, repo := range repos {
-		repoTime := repo.CreatedAt.In(account.TimezoneLocation)
-		if repoTime.Before(oldestDigestTime) {
-			oldestDigestTime = repoTime
-		}
-	}
-
+	oldestDigestTime := repos.OldestFirstCommitTime.In(account.TimezoneLocation)
 	intervalDigests := make([]*IntervalDigest, 0)
 	now := time.Now().In(account.TimezoneLocation)
 	for yearDelta := -1; ; yearDelta-- {
@@ -171,9 +147,8 @@ func newDigest(githubClient *github.Client, account *Account) (*Digest, error) {
 		digestEndTime := digestStartTime.AddDate(0, 0, 1)
 
 		// Only look at repos that may have activity in the digest interval.
-		var intervalRepos []*github.Repository
-		for i := range repos {
-			repo := &repos[i]
+		var intervalRepos []*Repo
+		for _, repo := range repos.AllRepos {
 			if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt != nil &&
 				repo.PushedAt.After(digestStartTime) {
 				intervalRepos = append(intervalRepos, repo)
@@ -209,7 +184,7 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 	ch := make(chan *RepoDigestResponse)
 	for _, intervalDigest := range digest.IntervalDigests {
 		for _, repo := range intervalDigest.repos {
-			go func(intervalDigest *IntervalDigest, repo *github.Repository) {
+			go func(intervalDigest *IntervalDigest, repo *Repo) {
 				commits, _, err := githubClient.Repositories.ListCommits(
 					*repo.Owner.Login,
 					*repo.Name,
