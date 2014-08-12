@@ -1,18 +1,7 @@
-{{define "digest-admin"}}
+{{define "title"}}GitHop Admin{{end}}
 
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<title>GitHop Admin</title>
-	<link rel="stylesheet" href="/static/main.css">
-	<link rel="stylesheet" href="/static/digest.css">
-</head>
-<body>
-  <h1>GitHop Admin</h1>
+{{define "body"}}
 
-  {{template "digest" .Digest}}
-</body>
-</html>
+{{template "digest" .Digest}}
 
 {{end}}

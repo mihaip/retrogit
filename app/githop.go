@@ -9,7 +9,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"appengine"
 	"appengine/mail"
@@ -25,6 +27,26 @@ var router *mux.Router
 var githubOauthConfig oauth.Config
 var sessionStore *sessions.CookieStore
 var sessionConfig SessionConfig
+var templates map[string]*template.Template
+
+func init() {
+	initTemplates()
+	sessionStore, sessionConfig = initSession()
+	initGithubOAuthConfig()
+
+	router = mux.NewRouter()
+	router.HandleFunc("/", indexHandler).Name("index")
+
+	router.HandleFunc("/session/sign-in", signInHandler).Name("sign-in")
+	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out")
+	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
+
+	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
+	router.HandleFunc("/digest/cron", digestCronHandler)
+
+	router.HandleFunc("/admin/digest", digestAdminHandler)
+	http.Handle("/", router)
+}
 
 func initGithubOAuthConfig() {
 	path := "config/github-oauth"
@@ -45,25 +67,33 @@ func initGithubOAuthConfig() {
 	githubOauthConfig.TokenURL = "https://github.com/login/oauth/access_token"
 }
 
-func init() {
-	sessionStore, sessionConfig = initSession()
-	initGithubOAuthConfig()
-
-	router = mux.NewRouter()
-	router.HandleFunc("/", indexHandler).Name("index")
-
-	router.HandleFunc("/session/sign-in", signInHandler).Name("sign-in")
-	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out")
-	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
-
-	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
-	router.HandleFunc("/digest/cron", digestCronHandler)
-
-	router.HandleFunc("/admin/digest", digestAdminHandler)
-	http.Handle("/", router)
+func initTemplates() {
+	sharedFileNames, err := filepath.Glob("templates/shared/*.html")
+	if err != nil {
+		log.Panicf("Could not read shared template file names %s", err.Error())
+	}
+	templateFileNames, err := filepath.Glob("templates/*.html")
+	if err != nil {
+		log.Panicf("Could not read template file names %s", err.Error())
+	}
+	templates = make(map[string]*template.Template)
+	for _, templateFileName := range templateFileNames {
+		templateName := filepath.Base(templateFileName)
+		templateName = strings.TrimSuffix(templateName, filepath.Ext(templateName))
+		fileNames := make([]string, 0, len(sharedFileNames)+2)
+		// The base template has to come first, except for the email template, which
+		// doesn't use it
+		if templateName != "digest-email" {
+			fileNames = append(fileNames, "templates/base/page.html")
+		}
+		fileNames = append(fileNames, templateFileName)
+		fileNames = append(fileNames, sharedFileNames...)
+		templates[templateName], err = template.ParseFiles(fileNames...)
+		if err != nil {
+			log.Panicf("Could not parse template files for %s: %s", templateFileName, err.Error())
+		}
+	}
 }
-
-var templates = template.Must(template.ParseGlob("templates/*.html"))
 
 func signInHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, githubOauthConfig.AuthCodeURL(""), http.StatusFound)
@@ -85,7 +115,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		var data = map[string]string{
 			"SignInUrl": signInUrl.String(),
 		}
-		if err := templates.ExecuteTemplate(w, "index-signed-out", data); err != nil {
+		if err := templates["index-signed-out"].Execute(w, data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
@@ -118,7 +148,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		"SendDigestUrl": sendDigestUrl.String(),
 		"Digest":        digest,
 	}
-	if err := templates.ExecuteTemplate(w, "index", data); err != nil {
+	if err := templates["index"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -174,14 +204,14 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 		return false, nil
 	}
 
+	var data = map[string]interface{}{
+		"Styles": getDigestStyles(),
+		"Digest": digest,
+	}
 	var digestHtml bytes.Buffer
-	digestHtml.WriteString("<html><head><style>")
-	digestHtml.Write(getDigestStyles())
-	digestHtml.WriteString("</style></head><body>")
-	if err := templates.ExecuteTemplate(&digestHtml, "digest", digest); err != nil {
+	if err := templates["digest-email"].Execute(&digestHtml, data); err != nil {
 		return false, err
 	}
-	digestHtml.WriteString("</body></html>")
 
 	emails, _, err := githubClient.Users.ListEmails(nil)
 	if err != nil {
@@ -209,12 +239,12 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	return true, err
 }
 
-func getDigestStyles() []byte {
+func getDigestStyles() template.CSS {
 	b, err := ioutil.ReadFile("static/digest.css")
 	if err != nil {
 		log.Panicf("Could not read digest CSS: %s", err.Error())
 	}
-	return b
+	return template.CSS(string(b[:]))
 }
 
 func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -280,7 +310,7 @@ func digestAdminHandler(w http.ResponseWriter, r *http.Request) {
 	var data = map[string]interface{}{
 		"Digest": digest,
 	}
-	if err := templates.ExecuteTemplate(w, "digest-admin", data); err != nil {
+	if err := templates["digest-admin"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

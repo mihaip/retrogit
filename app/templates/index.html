@@ -1,28 +1,17 @@
-{{define "index"}}
+{{define "title"}}GitHop{{end}}
 
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<title>GitHop</title>
-	<link rel="stylesheet" href="/static/main.css">
-	<link rel="stylesheet" href="/static/digest.css">
-</head>
-<body>
-  <h1>GitHop!</h1>
+{{define "body"}}
 
-  <p>
-    <a href="{{.SignOutUrl}}">
-      Sign Out
-    </a>
-  </p>
+<p>
+  <a href="{{.SignOutUrl}}">
+    Sign Out
+  </a>
+</p>
 
-  <form method="POST" action="{{.SendDigestUrl}}">
-    <input type="submit" value="Email Digest">
-  </form>
+<form method="POST" action="{{.SendDigestUrl}}">
+  <input type="submit" value="Email Digest">
+</form>
 
-  {{template "digest" .Digest}}
-</body>
-</html>
+{{template "digest" .Digest}}
 
 {{end}}
