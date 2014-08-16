@@ -69,6 +69,15 @@ func initGithubOAuthConfig() {
 }
 
 func initTemplates() {
+	funcMap := template.FuncMap{
+		"routeUrl": func(name string) (string, error) {
+			url, err := router.Get(name).URL()
+			if err != nil {
+				return "", err
+			}
+			return url.String(), nil
+		},
+	}
 	sharedFileNames, err := filepath.Glob("templates/shared/*.html")
 	if err != nil {
 		log.Panicf("Could not read shared template file names %s", err.Error())
@@ -89,7 +98,8 @@ func initTemplates() {
 		}
 		fileNames = append(fileNames, templateFileName)
 		fileNames = append(fileNames, sharedFileNames...)
-		templates[templateName], err = template.ParseFiles(fileNames...)
+		_, templateFileName = filepath.Split(fileNames[0])
+		templates[templateName], err = template.New(templateFileName).Funcs(funcMap).ParseFiles(fileNames...)
 		if err != nil {
 			log.Panicf("Could not parse template files for %s: %s", templateFileName, err.Error())
 		}
@@ -112,11 +122,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
 	if !ok {
-		signInUrl, _ := router.Get("sign-in").URL()
-		var data = map[string]string{
-			"SignInUrl": signInUrl.String(),
-		}
-		if err := templates["index-signed-out"].Execute(w, data); err != nil {
+		if err := templates["index-signed-out"].Execute(w, nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
@@ -134,15 +140,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signOutUrl, _ := router.Get("sign-out").URL()
-	viewDigestUrl, _ := router.Get("view-digest").URL()
-	sendDigestUrl, _ := router.Get("send-digest").URL()
-	var data = map[string]interface{}{
-		"SignOutUrl":    signOutUrl.String(),
-		"ViewDigestUrl": viewDigestUrl.String(),
-		"SendDigestUrl": sendDigestUrl.String(),
-	}
-	if err := templates["index"].Execute(w, data); err != nil {
+	if err := templates["index"].Execute(w, nil); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

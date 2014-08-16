@@ -3,14 +3,14 @@
 {{define "body"}}
 
 <p>
-  <a href="{{.SignOutUrl}}">
+  <a href="{{routeUrl "sign-out"}}">
     Sign Out
   </a>
 </p>
 
-<a href="{{.ViewDigestUrl}}">View Digest</a>
+<a href="{{routeUrl "view-digest"}}">View Digest</a>
 -
-<form id="send-form" method="POST" action="{{.SendDigestUrl}}">
+<form id="send-form" method="POST" action="{{routeUrl "send-digest"}}">
   <input type="submit" value="Email Digest">
 </form>
 
