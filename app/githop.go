@@ -41,6 +41,7 @@ func init() {
 	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out")
 	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
 
+	router.HandleFunc("/digest/view", viewDigestHandler).Name("view-digest")
 	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
 	router.HandleFunc("/digest/cron", digestCronHandler)
 
@@ -133,6 +134,29 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	signOutUrl, _ := router.Get("sign-out").URL()
+	viewDigestUrl, _ := router.Get("view-digest").URL()
+	sendDigestUrl, _ := router.Get("send-digest").URL()
+	var data = map[string]interface{}{
+		"SignOutUrl":    signOutUrl.String(),
+		"ViewDigestUrl": viewDigestUrl.String(),
+		"SendDigestUrl": sendDigestUrl.String(),
+	}
+	if err := templates["index"].Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func viewDigestHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	userId := session.Values[sessionConfig.UserIdKey].(int)
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	oauthTransport := githubOAuthTransport(c)
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
@@ -141,14 +165,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	signOutUrl, _ := router.Get("sign-out").URL()
-	sendDigestUrl, _ := router.Get("send-digest").URL()
 	var data = map[string]interface{}{
-		"SignOutUrl":    signOutUrl.String(),
-		"SendDigestUrl": sendDigestUrl.String(),
-		"Digest":        digest,
+		"Digest": digest,
 	}
-	if err := templates["index"].Execute(w, data); err != nil {
+	if err := templates["digest-page"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

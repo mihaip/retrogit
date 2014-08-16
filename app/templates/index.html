@@ -8,10 +8,10 @@
   </a>
 </p>
 
-<form method="POST" action="{{.SendDigestUrl}}">
+<a href="{{.ViewDigestUrl}}">View Digest</a>
+-
+<form id="send-form" method="POST" action="{{.SendDigestUrl}}">
   <input type="submit" value="Email Digest">
 </form>
-
-{{template "digest" .Digest}}
 
 {{end}}
