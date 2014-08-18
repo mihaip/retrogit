@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"appengine"
 	"appengine/mail"
@@ -25,12 +26,14 @@ import (
 
 var router *mux.Router
 var githubOauthConfig oauth.Config
+var timezones Timezones
 var sessionStore *sessions.CookieStore
 var sessionConfig SessionConfig
 var templates map[string]*template.Template
 
 func init() {
 	initTemplates()
+	timezones = initTimezones()
 	sessionStore, sessionConfig = initSession()
 	initGithubOAuthConfig()
 
@@ -44,6 +47,8 @@ func init() {
 	router.HandleFunc("/digest/view", viewDigestHandler).Name("view-digest")
 	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
 	router.HandleFunc("/digest/cron", digestCronHandler)
+
+	router.HandleFunc("/account/set-timezone", setTimezoneHandler).Name("set-timezone").Methods("POST")
 
 	router.HandleFunc("/admin/digest", digestAdminHandler)
 	http.Handle("/", router)
@@ -139,8 +144,11 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	if err := templates["index"].Execute(w, nil); err != nil {
+	var data = map[string]interface{}{
+		"Account":   account,
+		"Timezones": timezones,
+	}
+	if err := templates["index"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -296,6 +304,34 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	session.Values[sessionConfig.UserIdKey] = user.ID
 	session.Save(r, w)
+	indexUrl, _ := router.Get("index").URL()
+	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+}
+
+func setTimezoneHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	userId := session.Values[sessionConfig.UserIdKey].(int)
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	timezoneName := r.FormValue("timezone_name")
+	_, err = time.LoadLocation(timezoneName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	account.TimezoneName = timezoneName
+	err = account.put(c)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 }
