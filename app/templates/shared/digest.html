@@ -9,7 +9,7 @@
 
   <p>{{.Description}}</p>
 
-  {{range $index, $repoDigest := .RepoDigests}}
+  {{range .RepoDigests}}
     <h2>
       <a href="{{.Repo.HTMLURL}}">{{.Repo.FullName}}</a>
     </h2>
