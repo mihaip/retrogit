@@ -74,6 +74,7 @@ func initGithubOAuthConfig() {
 }
 
 func initTemplates() {
+	styles := loadStyles()
 	funcMap := template.FuncMap{
 		"routeUrl": func(name string) (string, error) {
 			url, err := router.Get(name).URL()
@@ -81,6 +82,12 @@ func initTemplates() {
 				return "", err
 			}
 			return url.String(), nil
+		},
+		"style": func(names ...string) (result template.CSS) {
+			for _, name := range names {
+				result += styles[name]
+			}
+			return
 		},
 	}
 	sharedFileNames, err := filepath.Glob("templates/shared/*.html")
@@ -109,6 +116,39 @@ func initTemplates() {
 			log.Panicf("Could not parse template files for %s: %s", templateFileName, err.Error())
 		}
 	}
+}
+
+func loadStyles() (result map[string]template.CSS) {
+	stylesBytes, err := ioutil.ReadFile("config/styles.json")
+	if err != nil {
+		log.Panicf("Could not read styles JSON: %s", err.Error())
+	}
+	var stylesJson interface{}
+	err = json.Unmarshal(stylesBytes, &stylesJson)
+	if err != nil {
+		log.Panicf("Could not parse styles JSON %s: %s", stylesBytes, err.Error())
+	}
+	result = make(map[string]template.CSS)
+	var parse func(string, map[string]interface{}, *string)
+	parse = func(path string, stylesJson map[string]interface{}, currentStyle *string) {
+		if path != "" {
+			path += "."
+		}
+		for k, v := range stylesJson {
+			switch v.(type) {
+			case string:
+				*currentStyle += k + ":" + v.(string) + ";"
+			case map[string]interface{}:
+				nestedStyle := ""
+				parse(path+k, v.(map[string]interface{}), &nestedStyle)
+				result[path+k] = template.CSS(nestedStyle)
+			default:
+				log.Panicf("Unexpected type for %s in styles JSON", k)
+			}
+		}
+	}
+	parse("", stylesJson.(map[string]interface{}), nil)
+	return
 }
 
 func signInHandler(w http.ResponseWriter, r *http.Request) {
@@ -231,7 +271,6 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	}
 
 	var data = map[string]interface{}{
-		"Styles": getDigestStyles(),
 		"Digest": digest,
 	}
 	var digestHtml bytes.Buffer
@@ -263,14 +302,6 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	}
 	err = mail.Send(c, digestMessage)
 	return true, err
-}
-
-func getDigestStyles() template.CSS {
-	b, err := ioutil.ReadFile("static/digest.css")
-	if err != nil {
-		log.Panicf("Could not read digest CSS: %s", err.Error())
-	}
-	return template.CSS(string(b[:]))
 }
 
 func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {

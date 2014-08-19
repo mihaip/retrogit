@@ -1,29 +1,42 @@
 {{define "digest"}}
 
-<dl>
+<div style="{{style "digest"}}">
 
-<p>GitHub activity time machine for <a href="https://github.com/{{.User.Login}}" title={{.User.Name}}><img src={{.User.AvatarURL}} width="20" height="20" border="0">{{.User.Login}}</a>.</p>
+<p style="{{style "intro-paragraph"}}">
+  GitHub activity time machine for
+  <a href="https://github.com/{{.User.Login}}"
+     title={{.User.Name}}
+     style="{{style "link" "intro-paragraph.user-link"}}">
+    <img src={{.User.AvatarURL}}
+         width="20"
+         height="20"
+         border="0"
+         style="{{style "intro-paragraph.user-avatar"}}">{{.User.Login}}
+  </a>.
+</p>
 
 {{range .IntervalDigests }}
-  <h1>{{.Header}}</h1>
+  <h1 style="{{style "interval-header"}}">{{.Header}}</h1>
 
   <p>{{.Description}}</p>
 
   {{range .RepoDigests}}
-    <h2>
-      <a href="{{.Repo.HTMLURL}}">{{.Repo.FullName}}</a>
+    <h2 style="{{style "repository-header"}}">
+      <a href="{{.Repo.HTMLURL}}" style="{{style "link"}}">{{.Repo.FullName}}</a>
     </h2>
 
     <div>
       {{range .Commits }}
-        <div>
-          <h3>{{.Title}}</h3>
+        <div style="{{style "commit"}}">
+          <h3 style="{{style "commit.title"}}">{{.Title}}</h3>
           {{if .Message}}
-            <pre>{{.Message}}</pre>
+            <pre  style="{{style "commit.message"}}">{{.Message}}</pre>
           {{end}}
-          <div>
-            <a href="{{.URL}}">{{.DisplaySHA}}</a>
-            <i title={{.DisplayDateTooltip}}>{{.DisplayDate}}</i>
+          <div style="{{style "commit.footer"}}">
+            <a href="{{.URL}}"
+               style="{{style "link" "commit.footer.link"}}">{{.DisplaySHA}}</a>
+            <i title={{.DisplayDateTooltip}}
+               style="{{style "commit.footer.date"}}">{{.DisplayDate}}</i>
           </div>
         </div>
       {{end}}
@@ -32,6 +45,6 @@
 
 {{end}}
 
-</dl>
+</div>
 
 {{end}}
