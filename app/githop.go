@@ -48,6 +48,7 @@ func init() {
 	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
 	router.HandleFunc("/digest/cron", digestCronHandler)
 
+	router.HandleFunc("/account/settings", settingsHandler).Name("settings")
 	router.HandleFunc("/account/set-timezone", setTimezoneHandler).Name("set-timezone").Methods("POST")
 
 	router.HandleFunc("/admin/digest", digestAdminHandler)
@@ -184,11 +185,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var data = map[string]interface{}{
-		"Account":   account,
-		"Timezones": timezones,
-	}
-	if err := templates["index"].Execute(w, data); err != nil {
+	if err := templates["index"].Execute(w, nil); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -338,6 +335,26 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 }
+
+func settingsHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	userId := session.Values[sessionConfig.UserIdKey].(int)
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var data = map[string]interface{}{
+		"Account":   account,
+		"Timezones": timezones,
+	}
+	if err := templates["settings"].Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 
 func setTimezoneHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)

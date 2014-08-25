@@ -13,22 +13,7 @@
 <form id="send-form" method="POST" action="{{routeUrl "send-digest"}}">
   <input type="submit" value="Email Digest">
 </form>
-
-<p>
-  <form method="POST" action="{{routeUrl "set-timezone"}}">
-    <select name="timezone_name">
-        {{$accountTimezoneName := .Account.TimezoneName}}
-        {{range .Timezones}}
-          {{if .LocationName}}
-            <option value={{.LocationName}} {{if eq .LocationName $accountTimezoneName}}selected{{end}}>{{.LocationName}} (GMT {{.DisplayUTCOffset}})</option>
-          {{else}}
-            <option disabled></option>
-          {{end}}
-        {{end}}
-    </select>
-
-    <input type="submit" value="Set Timezone">
-  </form>
-</p>
+-
+<a href="{{routeUrl "settings"}}">Settings</a>
 
 {{end}}
