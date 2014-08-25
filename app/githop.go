@@ -360,6 +360,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var data = map[string]interface{}{
 		"Account":   account,
+		"User":			 user,
 		"Timezones": timezones,
 		"Repos":     repos,
 	}

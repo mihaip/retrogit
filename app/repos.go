@@ -28,6 +28,16 @@ type OrgRepos struct {
 	Repos []*Repo
 }
 
+func (repo *Repo) TypeAsOcticonName() string {
+	if *repo.Fork {
+		return "repo-forked"
+	}
+	if *repo.Private {
+		return "lock"
+	}
+	return "repo"
+}
+
 func getRepos(githubClient *github.Client, user *github.User) (*Repos, error) {
 	// The username parameter must be left blank so that we can get all of the
 	// repositories the user has access to, not just ones that they own.

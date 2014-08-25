@@ -1,7 +1,10 @@
 {{define "title"}}GitHop - Settings{{end}}
 
 {{define "repo"}}
-    <li><a href="{{.HTMLURL}}">{{.FullName}}</a></li>
+    <li>
+      <span class="octicon octicon-{{.TypeAsOcticonName}}"></span>
+      <a href="{{.HTMLURL}}">{{.FullName}}</a>
+    </li>
 {{end}}
 
 {{define "body"}}
@@ -28,14 +31,29 @@
 </p>
 
 <ul>
-  {{range .Repos.UserRepos}}
-    {{template "repo" .}}
-  {{end}}
+  <li>
+    <a href="https://github.com/{{.User.Login}}">
+    <img src={{.User.AvatarURL}}
+         width="20"
+         height="20"
+         border="0">{{.User.Login}}</a>
+  </li>
+  <ul>
+    {{range .Repos.UserRepos}}
+      {{template "repo" .}}
+    {{end}}
+  </ul>
 </ul>
 
 <ul>
   {{range .Repos.OtherUserRepos}}
-    <li>{{.User.Login}}</li>
+    <li>
+      <a href="https://github.com/{{.User.Login}}">
+      <img src={{.User.AvatarURL}}
+           width="20"
+           height="20"
+           border="0">{{.User.Login}}</a>
+    </li>
     <ul>
       {{range .Repos}}
         {{template "repo" .}}
@@ -46,7 +64,13 @@
 
 <ul>
   {{range .Repos.OrgRepos}}
-    <li>{{.Org.Login}}</li>
+    <li>
+      <a href="https://github.com/{{.Org.Login}}">
+      <img src={{.Org.AvatarURL}}
+           width="20"
+           height="20"
+           border="0">{{.Org.Login}}</a>
+    </li>
     <ul>
       {{range .Repos}}
         {{template "repo" .}}
