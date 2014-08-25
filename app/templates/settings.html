@@ -1,5 +1,9 @@
 {{define "title"}}GitHop - Settings{{end}}
 
+{{define "repo"}}
+    <li><a href="{{.HTMLURL}}">{{.FullName}}</a></li>
+{{end}}
+
 {{define "body"}}
 
 <p>
@@ -18,6 +22,38 @@
     <input type="submit" value="Set Timezone">
   </form>
 </p>
+
+<p>
+  You have {{len .Repos.AllRepos}} repositories:
+</p>
+
+<ul>
+  {{range .Repos.UserRepos}}
+    {{template "repo" .}}
+  {{end}}
+</ul>
+
+<ul>
+  {{range .Repos.OtherUserRepos}}
+    <li>{{.User.Login}}</li>
+    <ul>
+      {{range .Repos}}
+        {{template "repo" .}}
+      {{end}}
+    </ul>
+  {{end}}
+</ul>
+
+<ul>
+  {{range .Repos.OrgRepos}}
+    <li>{{.Org.Login}}</li>
+    <ul>
+      {{range .Repos}}
+        {{template "repo" .}}
+      {{end}}
+    </ul>
+  {{end}}
+</ul>
 
 {{end}}
 

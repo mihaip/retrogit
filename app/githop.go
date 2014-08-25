@@ -346,15 +346,27 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oauthTransport := githubOAuthTransport(c)
+	oauthTransport.Token = &account.OAuthToken
+	githubClient := github.NewClient(oauthTransport.Client())
+
+	user, _, err := githubClient.Users.Get("")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	repos, err := getRepos(githubClient, user)
+
 	var data = map[string]interface{}{
 		"Account":   account,
 		"Timezones": timezones,
+		"Repos":     repos,
 	}
 	if err := templates["settings"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
 
 func setTimezoneHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)

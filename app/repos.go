@@ -9,12 +9,18 @@ import (
 type Repos struct {
 	AllRepos              []*Repo
 	UserRepos             []*Repo
+	OtherUserRepos        []*UserRepos
 	OrgRepos              []*OrgRepos
 	OldestFirstCommitTime time.Time
 }
 
 type Repo struct {
 	*github.Repository
+}
+
+type UserRepos struct {
+	User  *github.User
+	Repos []*Repo
 }
 
 type OrgRepos struct {
@@ -32,9 +38,29 @@ func getRepos(githubClient *github.Client, user *github.User) (*Repos, error) {
 
 	repos := &Repos{}
 	repos.UserRepos = make([]*Repo, 0, len(clientUserRepos))
+	repos.OtherUserRepos = make([]*UserRepos, 0)
 	allRepoCount := len(clientUserRepos)
 	for i := range clientUserRepos {
-		repos.UserRepos = append(repos.UserRepos, &Repo{&clientUserRepos[i]})
+		ownerID := *clientUserRepos[i].Owner.ID
+		if ownerID == *user.ID {
+			repos.UserRepos = append(repos.UserRepos, &Repo{&clientUserRepos[i]})
+		} else {
+			var userRepos *UserRepos
+			for j := range repos.OtherUserRepos {
+				if *repos.OtherUserRepos[j].User.ID == ownerID {
+					userRepos = repos.OtherUserRepos[j]
+					break
+				}
+			}
+			if userRepos == nil {
+				userRepos = &UserRepos{
+					User:  clientUserRepos[i].Owner,
+					Repos: make([]*Repo, 0),
+				}
+				repos.OtherUserRepos = append(repos.OtherUserRepos, userRepos)
+			}
+			userRepos.Repos = append(userRepos.Repos, &Repo{&clientUserRepos[i]})
+		}
 	}
 
 	orgs, _, err := githubClient.Organizations.List("", nil)
