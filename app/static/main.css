@@ -3,6 +3,54 @@ body {
   font-size: 10pt;
 }
 
+a {
+  color: #4183c4;
+  text-decoration: none;
+}
+
 #send-form {
   display: inline;
+}
+
+.repos h2 {
+  font-size: 32px;
+  font-weight: bold;
+  position: relative;
+  margin: 15px 0 10px;
+}
+
+.repos h2:after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #ccc;
+}
+
+.repos h2 .avatar {
+  height: 28px;
+}
+
+.repos ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.repos .repo {
+  overflow: hidden;
+  margin: 5px 0;
+  padding: 0;
+}
+
+.repos .repo.private .glyph {
+  color: #baac79;
+}
+
+.repos .repo .vintage {
+  padding-left: 1em;
+  color: #999;
+  font-style: italic;
 }

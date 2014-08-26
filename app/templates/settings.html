@@ -1,9 +1,10 @@
 {{define "title"}}GitHop - Settings{{end}}
 
 {{define "repo"}}
-    <li>
-      <span class="octicon octicon-{{.TypeAsOcticonName}}"></span>
+    <li class="repo {{.TypeAsClassName}}">
+      <span class="glyph octicon octicon-{{.TypeAsOcticonName}}"></span>
       <a href="{{.HTMLURL}}">{{.FullName}}</a>
+      <span class="vintage">{{.DisplayVintage}}</span>
     </li>
 {{end}}
 
@@ -30,54 +31,45 @@
   You have {{len .Repos.AllRepos}} repositories:
 </p>
 
-<ul>
-  <li>
+<div class="repos">
+  <h2>
     <a href="https://github.com/{{.User.Login}}">
-    <img src={{.User.AvatarURL}}
-         width="20"
-         height="20"
-         border="0">{{.User.Login}}</a>
-  </li>
+    <img src="{{.User.AvatarURL}}" class="avatar">{{.User.Login}}</a>
+  </h2>
   <ul>
     {{range .Repos.UserRepos}}
       {{template "repo" .}}
     {{end}}
   </ul>
-</ul>
+</div>
 
-<ul>
-  {{range .Repos.OtherUserRepos}}
-    <li>
+{{range .Repos.OtherUserRepos}}
+  <div class="repos">
+    <h2>
       <a href="https://github.com/{{.User.Login}}">
-      <img src={{.User.AvatarURL}}
-           width="20"
-           height="20"
-           border="0">{{.User.Login}}</a>
-    </li>
+      <img src="{{.User.AvatarURL}}" class="avatar">{{.User.Login}}</a>
+    </h2>
     <ul>
       {{range .Repos}}
         {{template "repo" .}}
       {{end}}
     </ul>
-  {{end}}
-</ul>
+  </div>
+{{end}}
 
-<ul>
-  {{range .Repos.OrgRepos}}
-    <li>
+{{range .Repos.OrgRepos}}
+  <div class="repos">
+    <h2>
       <a href="https://github.com/{{.Org.Login}}">
-      <img src={{.Org.AvatarURL}}
-           width="20"
-           height="20"
-           border="0">{{.Org.Login}}</a>
-    </li>
+      <img src="{{.Org.AvatarURL}}" class="avatar">{{.Org.Login}}</a>
+    </h2>
     <ul>
       {{range .Repos}}
         {{template "repo" .}}
       {{end}}
     </ul>
-  {{end}}
-</ul>
+  </div>
+{{end}}
 
 {{end}}
 

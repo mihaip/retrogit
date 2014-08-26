@@ -44,7 +44,7 @@ func newDigestCommit(commit *github.RepositoryCommit, repo *Repo, location *time
 }
 
 func (commit DigestCommit) DisplayDate() string {
-	// Prefer the date the comit was pushed, since that's what GitHub filters
+	// Prefer the date the commit was pushed, since that's what GitHub filters
 	// and sorts by.
 	return commit.PushDate.Format(CommitDisplayDateFormat)
 }

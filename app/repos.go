@@ -6,6 +6,10 @@ import (
 	"github.com/google/go-github/github"
 )
 
+const (
+	VintageDateFormat = "January 2, 2006"
+)
+
 type Repos struct {
 	AllRepos              []*Repo
 	UserRepos             []*Repo
@@ -36,6 +40,20 @@ func (repo *Repo) TypeAsOcticonName() string {
 		return "lock"
 	}
 	return "repo"
+}
+
+func (repo *Repo) TypeAsClassName() string {
+	if *repo.Fork {
+		return "fork"
+	}
+	if *repo.Private {
+		return "private"
+	}
+	return ""
+}
+
+func (repo *Repo) DisplayVintage() string {
+	return repo.CreatedAt.Format(VintageDateFormat)
 }
 
 func getRepos(githubClient *github.Client, user *github.User) (*Repos, error) {
