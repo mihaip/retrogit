@@ -7,6 +7,7 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"appengine/delay"
+	"appengine/taskqueue"
 
 	"github.com/google/go-github/github"
 )
@@ -25,6 +26,7 @@ func getVintageKey(c appengine.Context, userId int, repoId int) *datastore.Key {
 	return datastore.NewKey(c, "RepoVintage", fmt.Sprintf("%d-%d", userId, repoId), 0, nil)
 }
 
+var computeVintageFunc *delay.Function
 func computeVintage(c appengine.Context, userId int, userLogin string, repoOwnerLogin string, repoName string) error {
 	account, err := getAccount(c, userId)
 	if err != nil {
@@ -42,6 +44,8 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoOwner
 		return err
 	}
 
+	// Cheap check to see if there are commits before the creation time.
+	vintage := repo.CreatedAt.UTC()
 	beforeCreationTime := repo.CreatedAt.UTC().AddDate(0, 0, -1)
 	commits, _, err := githubClient.Repositories.ListCommits(
 		repoOwnerLogin,
@@ -51,30 +55,60 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoOwner
 			Author:      userLogin,
 			Until:       beforeCreationTime,
 		})
-
 	if err != nil {
 		c.Errorf("Could not load commits for repo %s: %s", *repo.FullName, err.Error())
 		return err
 	}
 
+	// If there are, then we use the contributor stats API to figure out when
+	// the user's first commit in the repository was.
 	if len(commits) > 0 {
-		// TODO: compute vintage via the stats API
-	} else {
-		_, err = datastore.Put(c, getVintageKey(c, userId, *repo.ID), &RepoVintage{
-			UserId:  userId,
-			RepoId:  *repo.ID,
-			Vintage: repo.CreatedAt.UTC(),
-		})
+		stats, response, err := githubClient.Repositories.ListContributorsStats(repoOwnerLogin, repoName)
+		if response.StatusCode == 202 {
+			c.Infof("Stats were not available for %s, will try again later", *repo.FullName)
+			task, err := computeVintageFunc.Task(userId, userLogin, repoOwnerLogin, repoName)
+			if err != nil {
+				c.Errorf("Could create delayed task for %s: %s", *repo.FullName, err.Error())
+				return err
+			}
+			task.Delay = time.Second * 10
+			taskqueue.Add(c, task, "")
+			return nil
+		}
 		if err != nil {
-			c.Errorf("Could save vintage for repo %s: %s", *repo.FullName, err.Error())
+			c.Errorf("Could not load stats for repo %s: %s", *repo.FullName, err.Error())
 			return err
 		}
+		for _, stat := range stats {
+			if *stat.Author.ID == userId {
+				for i := range stat.Weeks {
+					weekTimestamp := stat.Weeks[i].Week.UTC()
+					if weekTimestamp.Before(vintage) {
+						vintage = weekTimestamp
+					}
+				}
+				break
+			}
+		}
+	}
+
+	_, err = datastore.Put(c, getVintageKey(c, userId, *repo.ID), &RepoVintage{
+		UserId:  userId,
+		RepoId:  *repo.ID,
+		Vintage: vintage,
+	})
+	if err != nil {
+		c.Errorf("Could save vintage for repo %s: %s", *repo.FullName, err.Error())
+		return err
 	}
 
 	return nil
 }
 
-var computeVintageFunc = delay.Func("computeVintage", computeVintage)
+func init() {
+	computeVintageFunc = delay.Func("computeVintage", computeVintage)
+}
+
 
 func fillVintages(c appengine.Context, user *github.User, repos []*Repo) error {
 	keys := make([]*datastore.Key, len(repos))

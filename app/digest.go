@@ -151,7 +151,7 @@ func newDigest(c appengine.Context, githubClient *github.Client, account *Accoun
 		// Only look at repos that may have activity in the digest interval.
 		var intervalRepos []*Repo
 		for _, repo := range repos.AllRepos {
-			if repo.CreatedAt.Before(digestEndTime) && repo.PushedAt != nil &&
+			if repo.Vintage.Before(digestEndTime) && repo.PushedAt != nil &&
 				repo.PushedAt.After(digestStartTime) {
 				intervalRepos = append(intervalRepos, repo)
 			}
