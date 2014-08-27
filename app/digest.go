@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"appengine"
+
 	"github.com/google/go-github/github"
 )
 
@@ -125,18 +127,18 @@ type Digest struct {
 	IntervalDigests  []*IntervalDigest
 }
 
-func newDigest(githubClient *github.Client, account *Account) (*Digest, error) {
+func newDigest(c appengine.Context, githubClient *github.Client, account *Account) (*Digest, error) {
 	user, _, err := githubClient.Users.Get("")
 	if err != nil {
 		return nil, err
 	}
 
-	repos, err := getRepos(githubClient, user)
+	repos, err := getRepos(c, githubClient, user)
 	if err != nil {
 		return nil, err
 	}
 
-	oldestDigestTime := repos.OldestFirstCommitTime.In(account.TimezoneLocation)
+	oldestDigestTime := repos.OldestVintage.In(account.TimezoneLocation)
 	intervalDigests := make([]*IntervalDigest, 0)
 	now := time.Now().In(account.TimezoneLocation)
 	for yearDelta := -1; ; yearDelta-- {

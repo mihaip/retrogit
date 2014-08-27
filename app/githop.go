@@ -204,7 +204,7 @@ func viewDigestHandler(w http.ResponseWriter, r *http.Request) {
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
-	digest, err := newDigest(githubClient, account)
+	digest, err := newDigest(c, githubClient, account)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -259,7 +259,7 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
-	digest, err := newDigest(githubClient, account)
+	digest, err := newDigest(c, githubClient, account)
 	if err != nil {
 		return false, err
 	}
@@ -356,11 +356,15 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repos, err := getRepos(githubClient, user)
+	repos, err := getRepos(c, githubClient, user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	var data = map[string]interface{}{
 		"Account":   account,
-		"User":			 user,
+		"User":      user,
 		"Timezones": timezones,
 		"Repos":     repos,
 	}
@@ -418,7 +422,7 @@ func digestAdminHandler(w http.ResponseWriter, r *http.Request) {
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
-	digest, err := newDigest(githubClient, account)
+	digest, err := newDigest(c, githubClient, account)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
