@@ -48,7 +48,7 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoOwner
 	// Cheap check to see if there are commits before the creation time.
 	vintage := repo.CreatedAt.UTC()
 	beforeCreationTime := repo.CreatedAt.UTC().AddDate(0, 0, -1)
-	commits, _, err := githubClient.Repositories.ListCommits(
+	commits, response, err := githubClient.Repositories.ListCommits(
 		repoOwnerLogin,
 		repoName,
 		&github.CommitsListOptions{
@@ -56,7 +56,10 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoOwner
 			Author:      userLogin,
 			Until:       beforeCreationTime,
 		})
-	if err != nil {
+	if response.StatusCode == 409 {
+		// GitHub returns with a 409 when a repository is empty.
+		commits = make([]github.RepositoryCommit, 0)
+	} else if err != nil {
 		c.Errorf("Could not load commits for repo %s: %s", *repo.FullName, err.Error())
 		return err
 	}
