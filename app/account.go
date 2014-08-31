@@ -21,8 +21,8 @@ type Account struct {
 	TimezoneLocation     *time.Location `datastore:"-,"`
 }
 
-func getAccount(c appengine.Context, gitHubUserId int) (*Account, error) {
-	key := datastore.NewKey(c, "Account", "", int64(gitHubUserId), nil)
+func getAccount(c appengine.Context, githubUserId int) (*Account, error) {
+	key := datastore.NewKey(c, "Account", "", int64(githubUserId), nil)
 	account := new(Account)
 	err := datastore.Get(c, key, account)
 	if err != nil {
@@ -52,19 +52,18 @@ func initAccount(account *Account) error {
 	return nil
 }
 
-func getAllAccounts(c appengine.Context, accounts *[]Account) error {
+func getAllAccountGithubUserIds(c appengine.Context) ([]int, error) {
 	q := datastore.NewQuery("Account")
-	_, err := q.GetAll(c, accounts)
+	var accounts []Account
+	_, err := q.GetAll(c, &accounts)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	for i, _ := range *accounts {
-		err = initAccount(&(*accounts)[i])
-		if err != nil {
-			return err
-		}
+	result := make([]int, len(accounts))
+	for i := range accounts {
+		result[i] = accounts[i].GitHubUserId
 	}
-	return nil
+	return result, nil
 }
 
 func (account *Account) put(c appengine.Context) error {

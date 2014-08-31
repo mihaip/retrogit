@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"appengine"
+	"appengine/delay"
 	"appengine/mail"
 	"appengine/urlfetch"
 
@@ -237,12 +238,30 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func digestCronHandler(w http.ResponseWriter, r *http.Request) {
-	var accounts []Account
 	c := appengine.NewContext(r)
-	getAllAccounts(c, &accounts)
-	for _, account := range accounts {
-		c.Infof("Sending digest for %d...", account.GitHubUserId)
-		sent, err := sendDigestForAccount(&account, c)
+	githubUserIds, err := getAllAccountGithubUserIds(c)
+	if err != nil {
+		c.Errorf("Error looking up accounts: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for _, githubUserId := range githubUserIds {
+		c.Infof("Enqueing task for %d...", githubUserId)
+		sendDigestForAccountFunc.Call(c, githubUserId)
+	}
+	fmt.Fprint(w, "Done")
+}
+
+var sendDigestForAccountFunc = delay.Func(
+	"sendDigestForAccount",
+	func(c appengine.Context, githubUserId int) error {
+		c.Infof("Sending digest for %d...", githubUserId)
+		account, err := getAccount(c, githubUserId)
+		if err != nil {
+			c.Errorf("  Error looking up account: %s", err.Error())
+			return err
+		}
+		sent, err := sendDigestForAccount(account, c)
 		if err != nil {
 			c.Errorf("  Error: %s", err.Error())
 		} else if sent {
@@ -250,9 +269,8 @@ func digestCronHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			c.Infof("  Not sent, digest was empty")
 		}
-	}
-	fmt.Fprint(w, "Done")
-}
+		return err
+	})
 
 func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	oauthTransport := githubOAuthTransport(c)
