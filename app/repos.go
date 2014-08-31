@@ -27,6 +27,7 @@ func getVintageKey(c appengine.Context, userId int, repoId int) *datastore.Key {
 }
 
 var computeVintageFunc *delay.Function
+
 func computeVintage(c appengine.Context, userId int, userLogin string, repoOwnerLogin string, repoName string) error {
 	account, err := getAccount(c, userId)
 	if err != nil {
@@ -108,7 +109,6 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoOwner
 func init() {
 	computeVintageFunc = delay.Func("computeVintage", computeVintage)
 }
-
 
 func fillVintages(c appengine.Context, user *github.User, repos []*Repo) error {
 	keys := make([]*datastore.Key, len(repos))
