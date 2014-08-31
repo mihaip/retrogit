@@ -49,8 +49,8 @@ func init() {
 	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
 	router.HandleFunc("/digest/cron", digestCronHandler)
 
-	router.HandleFunc("/account/settings", settingsHandler).Name("settings")
-	router.HandleFunc("/account/set-timezone", setTimezoneHandler).Name("set-timezone").Methods("POST")
+	router.HandleFunc("/account/settings", settingsHandler).Name("settings").Methods("GET")
+	router.HandleFunc("/account/settings", saveSettingsHandler).Name("save-settings").Methods("POST")
 
 	router.HandleFunc("/admin/digest", digestAdminHandler)
 	http.Handle("/", router)
@@ -374,7 +374,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repos, err := getRepos(c, githubClient, user)
+	repos, err := getRepos(c, githubClient, account, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -391,13 +391,28 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func setTimezoneHandler(w http.ResponseWriter, r *http.Request) {
+func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId := session.Values[sessionConfig.UserIdKey].(int)
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	oauthTransport := githubOAuthTransport(c)
+	oauthTransport.Token = &account.OAuthToken
+	githubClient := github.NewClient(oauthTransport.Client())
+
+	user, _, err := githubClient.Users.Get("")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	repos, err := getRepos(c, githubClient, account, user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -407,16 +422,25 @@ func setTimezoneHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	account.TimezoneName = timezoneName
+
+	account.ExcludedRepoIds = make([]int, 0)
+	for _, repo := range repos.AllRepos {
+		repoId := *repo.ID
+		_, included := r.Form[fmt.Sprintf("repo-%d", repoId)]
+		if !included {
+			account.ExcludedRepoIds = append(account.ExcludedRepoIds, repoId)
+		}
+	}
+
 	err = account.put(c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	indexUrl, _ := router.Get("index").URL()
-	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+	settingsUrl, _ := router.Get("settings").URL()
+	http.Redirect(w, r, settingsUrl.String(), http.StatusFound)
 }
 
 func digestAdminHandler(w http.ResponseWriter, r *http.Request) {

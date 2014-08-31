@@ -159,11 +159,16 @@ type Repos struct {
 
 type Repo struct {
 	*github.Repository
-	Vintage time.Time
+	Vintage         time.Time
+	IncludeInDigest bool
 }
 
-func newRepo(githubRepo *github.Repository) *Repo {
-	return &Repo{githubRepo, githubRepo.CreatedAt.UTC()}
+func newRepo(githubRepo *github.Repository, account *Account) *Repo {
+	return &Repo{
+		Repository:      githubRepo,
+		Vintage:         githubRepo.CreatedAt.UTC(),
+		IncludeInDigest: !account.IsRepoIdExcluded(*githubRepo.ID),
+	}
 }
 
 func (repo *Repo) TypeAsOcticonName() string {
@@ -200,7 +205,7 @@ type OrgRepos struct {
 	Repos []*Repo
 }
 
-func getRepos(c appengine.Context, githubClient *github.Client, user *github.User) (*Repos, error) {
+func getRepos(c appengine.Context, githubClient *github.Client, account *Account, user *github.User) (*Repos, error) {
 	// The username parameter must be left blank so that we can get all of the
 	// repositories the user has access to, not just ones that they own.
 	clientUserRepos, _, err := githubClient.Repositories.List("", nil)
@@ -215,7 +220,7 @@ func getRepos(c appengine.Context, githubClient *github.Client, user *github.Use
 	for i := range clientUserRepos {
 		ownerID := *clientUserRepos[i].Owner.ID
 		if ownerID == *user.ID {
-			repos.UserRepos = append(repos.UserRepos, newRepo(&clientUserRepos[i]))
+			repos.UserRepos = append(repos.UserRepos, newRepo(&clientUserRepos[i], account))
 		} else {
 			var userRepos *UserRepos
 			for j := range repos.OtherUserRepos {
@@ -231,7 +236,7 @@ func getRepos(c appengine.Context, githubClient *github.Client, user *github.Use
 				}
 				repos.OtherUserRepos = append(repos.OtherUserRepos, userRepos)
 			}
-			userRepos.Repos = append(userRepos.Repos, newRepo(&clientUserRepos[i]))
+			userRepos.Repos = append(userRepos.Repos, newRepo(&clientUserRepos[i], account))
 		}
 	}
 
@@ -251,7 +256,7 @@ func getRepos(c appengine.Context, githubClient *github.Client, user *github.Use
 		orgRepos := make([]*Repo, 0, len(clientOrgRepos))
 		allRepoCount += len(clientOrgRepos)
 		for j := range clientOrgRepos {
-			orgRepos = append(orgRepos, newRepo(&clientOrgRepos[j]))
+			orgRepos = append(orgRepos, newRepo(&clientOrgRepos[j], account))
 		}
 		repos.OrgRepos = append(repos.OrgRepos, &OrgRepos{org, orgRepos})
 	}

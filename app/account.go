@@ -19,6 +19,7 @@ type Account struct {
 	OAuthToken           oauth.Token    `datastore:"-,"`
 	TimezoneName         string         `datastore:",noindex"`
 	TimezoneLocation     *time.Location `datastore:"-,"`
+	ExcludedRepoIds      []int          `datastore:",noindex"`
 }
 
 func getAccount(c appengine.Context, githubUserId int) (*Account, error) {
@@ -64,6 +65,15 @@ func getAllAccountGithubUserIds(c appengine.Context) ([]int, error) {
 		result[i] = accounts[i].GitHubUserId
 	}
 	return result, nil
+}
+
+func (account *Account) IsRepoIdExcluded(repoId int) bool {
+	for i := range account.ExcludedRepoIds {
+		if account.ExcludedRepoIds[i] == repoId {
+			return true
+		}
+	}
+	return false
 }
 
 func (account *Account) put(c appengine.Context) error {

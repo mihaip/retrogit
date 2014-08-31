@@ -2,16 +2,22 @@
 
 {{define "repo"}}
     <li class="repo {{.TypeAsClassName}}">
-      <span class="glyph octicon octicon-{{.TypeAsOcticonName}}"></span>
-      <a href="{{.HTMLURL}}">{{.FullName}}</a>
-      <span class="vintage">{{.DisplayVintage}}</span>
+      <label>
+        <input type="checkbox" name="repo-{{.ID}}" value="include" {{if .IncludeInDigest}}checked{{end}}>
+        <span class="glyph octicon octicon-{{.TypeAsOcticonName}}"></span>
+        <a href="{{.HTMLURL}}">{{.FullName}}</a>
+        <span class="vintage">{{.DisplayVintage}}</span>
+      </label>
     </li>
 {{end}}
 
 {{define "body"}}
 
+<form method="POST" action="{{routeUrl "save-settings"}}">
+
 <p>
-  <form method="POST" action="{{routeUrl "set-timezone"}}">
+  <label>
+    Timezone for digest day boundaries:
     <select name="timezone_name">
         {{$accountTimezoneName := .Account.TimezoneName}}
         {{range .Timezones}}
@@ -22,13 +28,11 @@
           {{end}}
         {{end}}
     </select>
-
-    <input type="submit" value="Set Timezone">
-  </form>
+  </label>
 </p>
 
 <p>
-  You have {{len .Repos.AllRepos}} repositories:
+  You have {{len .Repos.AllRepos}} repositories. Select which you would like to include in your digest:
 </p>
 
 <div class="repos">
@@ -70,6 +74,9 @@
     </ul>
   </div>
 {{end}}
+
+  <input type="submit" value="Save Settings">
+</form>
 
 {{end}}
 
