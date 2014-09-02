@@ -3,12 +3,14 @@ package githop
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"time"
 
 	"appengine"
 	"appengine/datastore"
 
 	"code.google.com/p/goauth2/oauth"
+	"github.com/google/go-github/github"
 )
 
 type Account struct {
@@ -20,6 +22,7 @@ type Account struct {
 	TimezoneName         string         `datastore:",noindex"`
 	TimezoneLocation     *time.Location `datastore:"-,"`
 	ExcludedRepoIds      []int          `datastore:",noindex"`
+	DigestEmailAddress   string
 }
 
 func getAccount(c appengine.Context, githubUserId int) (*Account, error) {
@@ -76,7 +79,7 @@ func (account *Account) IsRepoIdExcluded(repoId int) bool {
 	return false
 }
 
-func (account *Account) put(c appengine.Context) error {
+func (account *Account) Put(c appengine.Context) error {
 	w := new(bytes.Buffer)
 	err := gob.NewEncoder(w).Encode(&account.OAuthToken)
 	if err != nil {
@@ -86,4 +89,32 @@ func (account *Account) put(c appengine.Context) error {
 	key := datastore.NewKey(c, "Account", "", int64(account.GitHubUserId), nil)
 	_, err = datastore.Put(c, key, account)
 	return err
+}
+
+func (account *Account) GetDigestEmailAddress(githubClient *github.Client) (string, error) {
+	if len(account.DigestEmailAddress) > 0 {
+		return account.DigestEmailAddress, nil
+	}
+	emails, _, err := githubClient.Users.ListEmails(nil)
+	if err != nil {
+		return "", err
+	}
+	// Prefer the primary, verified email
+	for _, email := range emails {
+		if email.Primary != nil && *email.Primary &&
+			email.Verified != nil && *email.Verified {
+			return *email.Email, nil
+		}
+	}
+	// Then the first verified email
+	for _, email := range emails {
+		if email.Verified != nil && *email.Verified {
+			return *email.Email, nil
+		}
+	}
+	// Then just the first email
+	for _, email := range emails {
+		return *email.Email, nil
+	}
+	return "", errors.New("No email addresses found in GitHub account")
 }

@@ -12,6 +12,15 @@ a {
   display: inline;
 }
 
+.setting {
+  margin: 1em 0;
+}
+
+.setting .explanation {
+  color: #999;
+  margin: 0;
+}
+
 .repos h2 {
   font-size: 32px;
   font-weight: bold;

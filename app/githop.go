@@ -3,7 +3,6 @@ package githop
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -293,25 +292,14 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 		return false, err
 	}
 
-	emails, _, err := githubClient.Users.ListEmails(nil)
+	emailAddress, err := account.GetDigestEmailAddress(githubClient)
 	if err != nil {
 		return false, err
-	}
-	var primaryVerified *string
-	for _, email := range emails {
-		if email.Primary != nil && *email.Primary &&
-			email.Verified != nil && *email.Verified {
-			primaryVerified = email.Email
-			break
-		}
-	}
-	if primaryVerified == nil {
-		return false, errors.New("No verified email addresses found in GitHub account")
 	}
 
 	digestMessage := &mail.Message{
 		Sender:   "GitHop <mihai.parparita@gmail.com>",
-		To:       []string{*primaryVerified},
+		To:       []string{emailAddress},
 		Subject:  "GitHop Digest",
 		HTMLBody: digestHtml.String(),
 	}
@@ -341,7 +329,7 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		GitHubUserId: *user.ID,
 		OAuthToken:   *token,
 	}
-	err = account.put(c)
+	err = account.Put(c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -380,11 +368,28 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	emails, _, err := githubClient.Users.ListEmails(nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	emailAddresses := make([]string, len(emails))
+	for i := range emails {
+		emailAddresses[i] = *emails[i].Email
+	}
+	accountEmailAddress, err := account.GetDigestEmailAddress(githubClient)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	var data = map[string]interface{}{
-		"Account":   account,
-		"User":      user,
-		"Timezones": timezones,
-		"Repos":     repos,
+		"Account":             account,
+		"User":                user,
+		"Timezones":           timezones,
+		"Repos":               repos,
+		"EmailAddresses":      emailAddresses,
+		"AccountEmailAddress": accountEmailAddress,
 	}
 	if err := templates["settings"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -433,7 +438,9 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = account.put(c)
+	account.DigestEmailAddress = r.FormValue("email_address")
+
+	err = account.Put(c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

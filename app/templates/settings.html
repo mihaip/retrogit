@@ -15,21 +15,39 @@
 
 <form method="POST" action="{{routeUrl "save-settings"}}">
 
-<p>
+<div class="setting">
   <label>
-    Timezone for digest day boundaries:
+    Timezone:
     <select name="timezone_name">
         {{$accountTimezoneName := .Account.TimezoneName}}
         {{range .Timezones}}
           {{if .LocationName}}
-            <option value={{.LocationName}} {{if eq .LocationName $accountTimezoneName}}selected{{end}}>{{.LocationName}} (GMT {{.DisplayUTCOffset}})</option>
+            <option value="{{.LocationName}}" {{if eq .LocationName $accountTimezoneName}}selected{{end}}>{{.LocationName}} (GMT {{.DisplayUTCOffset}})</option>
           {{else}}
             <option disabled></option>
           {{end}}
         {{end}}
     </select>
+    <div class="explanation">
+      Used for determining day boundaries and timestamps in emails.
+    </div>
   </label>
-</p>
+</div>
+
+<div class="setting">
+  <label>
+    Email address:
+    <select name="email_address">
+      {{$accountEmailAddress := .AccountEmailAddress}}
+      {{range .EmailAddresses}}
+          <option value="{{.}}" {{if eq . $accountEmailAddress}}selected{{end}}>{{.}}</option>
+      {{end}}
+    </select>
+  </label>
+    <div class="explanation">
+      Where your digest will be sent to.
+    </div>
+</div>
 
 <p>
   You have {{len .Repos.AllRepos}} repositories. Select which you would like to include in your digest:
