@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"time"
 
 	"appengine"
 	"appengine/memcache"
@@ -46,7 +47,7 @@ func (t *CachingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 		}
 	}
 	resp, err = t.Transport.RoundTrip(req)
-	if err != nil {
+	if err != nil || resp.StatusCode != 200 {
 		return
 	}
 	respBytes, err := httputil.DumpResponse(resp, true)
@@ -54,7 +55,19 @@ func (t *CachingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 		t.Context.Errorf("Error dumping bytes for cached response: %v", err)
 		return resp, nil
 	}
-	err = memcache.Set(t.Context, &memcache.Item{Key: cacheKey, Value: respBytes})
+	var expiration time.Duration = time.Hour
+	if strings.HasPrefix(req.URL.Path, "/repos/") &&
+		(strings.HasSuffix(req.URL.Path, "/commits") ||
+			strings.HasSuffix(req.URL.Path, "/stats/contributors")) {
+		expiration = 0
+	}
+	err = memcache.Set(
+		t.Context,
+		&memcache.Item{
+			Key:        cacheKey,
+			Value:      respBytes,
+			Expiration: expiration,
+		})
 	if err != nil {
 		t.Context.Errorf("Error setting cached response: %v", err)
 	}
