@@ -14,7 +14,8 @@ import (
 const (
 	CommitDisplayDateFormat        = "3:04pm"
 	CommitDisplayDateTooltipFormat = "Monday January 2 3:04pm"
-	DigestDisplayDateFormat        = "January 2, 2006 was a Monday"
+	DigestDisplayDateFormat        = "January 2, 2006"
+	DigestDisplayDayOfWeekFormat   = "Monday"
 )
 
 type DigestCommit struct {
@@ -115,8 +116,13 @@ func (digest *IntervalDigest) Description() string {
 	} else {
 		formattedRepoCount = fmt.Sprintf("%d repositories", repoCount)
 	}
-	return fmt.Sprintf("%s. You had %s in %s that day.",
+	dayOfWeek := digest.StartTime.Format(DigestDisplayDayOfWeekFormat)
+	// Insert a zero-width space inside the day of the week so that Gmail's
+	// event detection doesn't pick it up.
+	dayOfWeek = fmt.Sprintf("%s\u200B%s", dayOfWeek[:1], dayOfWeek[1:])
+	return fmt.Sprintf("%s was a %s. You had %s in %s that day.",
 		digest.StartTime.Format(DigestDisplayDateFormat),
+		dayOfWeek,
 		formattedCommitCount,
 		formattedRepoCount)
 }
