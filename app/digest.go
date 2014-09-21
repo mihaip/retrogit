@@ -197,6 +197,7 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 					*repo.Owner.Login,
 					*repo.Name,
 					&github.CommitsListOptions{
+						ListOptions: github.ListOptions{PerPage: 100},
 						Author: *digest.User.Login,
 						Since:  intervalDigest.StartTime.UTC(),
 						Until:  intervalDigest.EndTime.UTC(),
