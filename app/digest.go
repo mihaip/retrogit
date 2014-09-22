@@ -201,7 +201,7 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 						*repo.Name,
 						&github.CommitsListOptions{
 							ListOptions: github.ListOptions{
-								Page: page,
+								Page:    page,
 								PerPage: 100,
 							},
 							Author: *digest.User.Login,

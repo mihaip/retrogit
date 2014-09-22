@@ -208,9 +208,23 @@ type OrgRepos struct {
 func getRepos(c appengine.Context, githubClient *github.Client, account *Account, user *github.User) (*Repos, error) {
 	// The username parameter must be left blank so that we can get all of the
 	// repositories the user has access to, not just ones that they own.
-	clientUserRepos, _, err := githubClient.Repositories.List("", nil)
-	if err != nil {
-		return nil, err
+	clientUserRepos := make([]github.Repository, 0)
+	page := 1
+	for {
+		pageClientUserRepos, response, err := githubClient.Repositories.List("", &github.RepositoryListOptions{
+			ListOptions: github.ListOptions{
+				Page:    page,
+				PerPage: 100,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		clientUserRepos = append(clientUserRepos, pageClientUserRepos...)
+		if response.NextPage == 0 {
+			break
+		}
+		page = response.NextPage
 	}
 
 	repos := &Repos{}
