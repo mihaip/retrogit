@@ -193,24 +193,36 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 	for _, intervalDigest := range digest.IntervalDigests {
 		for _, repo := range intervalDigest.repos {
 			go func(intervalDigest *IntervalDigest, repo *Repo) {
-				commits, _, err := githubClient.Repositories.ListCommits(
-					*repo.Owner.Login,
-					*repo.Name,
-					&github.CommitsListOptions{
-						ListOptions: github.ListOptions{PerPage: 100},
-						Author: *digest.User.Login,
-						Since:  intervalDigest.StartTime.UTC(),
-						Until:  intervalDigest.EndTime.UTC(),
-					})
-				if err != nil {
-					ch <- &RepoDigestResponse{nil, nil, err}
-				} else {
-					digestCommits := make([]DigestCommit, len(commits))
-					for i := range commits {
-						digestCommits[len(commits)-i-1] = newDigestCommit(&commits[i], repo, digest.TimezoneLocation)
+				commits := make([]github.RepositoryCommit, 0)
+				page := 1
+				for {
+					pageCommits, response, err := githubClient.Repositories.ListCommits(
+						*repo.Owner.Login,
+						*repo.Name,
+						&github.CommitsListOptions{
+							ListOptions: github.ListOptions{
+								Page: page,
+								PerPage: 100,
+							},
+							Author: *digest.User.Login,
+							Since:  intervalDigest.StartTime.UTC(),
+							Until:  intervalDigest.EndTime.UTC(),
+						})
+					if err != nil {
+						ch <- &RepoDigestResponse{nil, nil, err}
+						return
 					}
-					ch <- &RepoDigestResponse{intervalDigest, &RepoDigest{repo, digestCommits}, nil}
+					commits = append(commits, pageCommits...)
+					if response.NextPage == 0 {
+						break
+					}
+					page = response.NextPage
 				}
+				digestCommits := make([]DigestCommit, len(commits))
+				for i := range commits {
+					digestCommits[len(commits)-i-1] = newDigestCommit(&commits[i], repo, digest.TimezoneLocation)
+				}
+				ch <- &RepoDigestResponse{intervalDigest, &RepoDigest{repo, digestCommits}, nil}
 			}(intervalDigest, repo)
 			fetchCount++
 		}
