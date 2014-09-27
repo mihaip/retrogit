@@ -238,15 +238,23 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 
 func digestCronHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
-	githubUserIds, err := getAllAccountGithubUserIds(c)
+	accounts, err := getAllAccounts(c)
 	if err != nil {
 		c.Errorf("Error looking up accounts: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	for _, githubUserId := range githubUserIds {
-		c.Infof("Enqueing task for %d...", githubUserId)
-		sendDigestForAccountFunc.Call(c, githubUserId)
+	for _, account := range accounts {
+		if account.Frequency == "weekly" {
+			now := time.Now().In(account.TimezoneLocation)
+			if now.Weekday() != account.WeeklyDay {
+				c.Infof("Skipping %d, since it wants weekly digests on %ss and today is a %s.",
+					account.GitHubUserId, account.WeeklyDay, now.Weekday())
+				continue
+			}
+		}
+		c.Infof("Enqueing task for %d...", account.GitHubUserId)
+		sendDigestForAccountFunc.Call(c, account.GitHubUserId)
 	}
 	fmt.Fprint(w, "Done")
 }
@@ -420,6 +428,14 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	account.Frequency = r.FormValue("frequency")
+	weeklyDay, err := strconv.Atoi(r.FormValue("weekly_day"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	account.WeeklyDay = time.Weekday(weeklyDay)
 
 	timezoneName := r.FormValue("timezone_name")
 	_, err = time.LoadLocation(timezoneName)

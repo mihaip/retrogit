@@ -23,6 +23,8 @@ type Account struct {
 	TimezoneLocation     *time.Location `datastore:"-,"`
 	ExcludedRepoIds      []int          `datastore:",noindex"`
 	DigestEmailAddress   string
+	Frequency            string
+	WeeklyDay            time.Weekday
 }
 
 func getAccount(c appengine.Context, githubUserId int) (*Account, error) {
@@ -49,6 +51,9 @@ func initAccount(account *Account) error {
 	if len(account.TimezoneName) == 0 {
 		account.TimezoneName = "America/Los_Angeles"
 	}
+	if len(account.Frequency) == 0 {
+		account.Frequency = "daily"
+	}
 	account.TimezoneLocation, err = time.LoadLocation(account.TimezoneName)
 	if err != nil {
 		return err
@@ -56,18 +61,20 @@ func initAccount(account *Account) error {
 	return nil
 }
 
-func getAllAccountGithubUserIds(c appengine.Context) ([]int, error) {
+func getAllAccounts(c appengine.Context) ([]Account, error) {
 	q := datastore.NewQuery("Account")
 	var accounts []Account
 	_, err := q.GetAll(c, &accounts)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]int, len(accounts))
 	for i := range accounts {
-		result[i] = accounts[i].GitHubUserId
+		err = initAccount(&accounts[i])
+		if err != nil {
+			return nil, err
+		}
 	}
-	return result, nil
+	return accounts, nil
 }
 
 func (account *Account) IsRepoIdExcluded(repoId int) bool {

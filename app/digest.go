@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	CommitDisplayDateFormat        = "3:04pm"
-	CommitDisplayDateTooltipFormat = "Monday January 2 3:04pm"
-	DigestDisplayDateFormat        = "January 2, 2006"
-	DigestDisplayDayOfWeekFormat   = "Monday"
+	CommitDisplayDateFormat      = "3:04pm"
+	CommitDisplayDateFullFormat  = "Monday January 2 3:04pm"
+	DigestDisplayDateFormat      = "January 2, 2006"
+	DigestDisplayShortDateFormat = "January 2"
+	DigestDisplayDayOfWeekFormat = "Monday"
 )
 
 type DigestCommit struct {
@@ -52,12 +53,16 @@ func (commit DigestCommit) DisplayDate() string {
 	return commit.PushDate.Format(CommitDisplayDateFormat)
 }
 
+func (commit DigestCommit) WeeklyDisplayDate() string {
+	return commit.PushDate.Format(CommitDisplayDateFullFormat)
+}
+
 func (commit DigestCommit) DisplayDateTooltip() string {
 	// But show the full details in a tooltip
 	return fmt.Sprintf(
 		"Pushed at %s\nCommited at %s",
-		commit.PushDate.Format(CommitDisplayDateTooltipFormat),
-		commit.CommitDate.Format(CommitDisplayDateTooltipFormat))
+		commit.PushDate.Format(CommitDisplayDateFullFormat),
+		commit.CommitDate.Format(CommitDisplayDateFullFormat))
 }
 
 type RepoDigest struct {
@@ -76,6 +81,7 @@ type IntervalDigest struct {
 	yearDelta   int
 	StartTime   time.Time
 	EndTime     time.Time
+	Weekly      bool
 	RepoDigests []*RepoDigest
 	repos       []*Repo
 }
@@ -116,15 +122,33 @@ func (digest *IntervalDigest) Description() string {
 	} else {
 		formattedRepoCount = fmt.Sprintf("%d repositories", repoCount)
 	}
-	dayOfWeek := digest.StartTime.Format(DigestDisplayDayOfWeekFormat)
-	// Insert a zero-width space inside the day of the week so that Gmail's
-	// event detection doesn't pick it up.
-	dayOfWeek = fmt.Sprintf("%s\u200B%s", dayOfWeek[:1], dayOfWeek[1:])
-	return fmt.Sprintf("%s was a %s. You had %s in %s that day.",
-		digest.StartTime.Format(DigestDisplayDateFormat),
-		dayOfWeek,
+
+	if !digest.Weekly {
+		dayOfWeek := digest.StartTime.Format(DigestDisplayDayOfWeekFormat)
+		// Insert a zero-width space inside the day of the week so that Gmail's
+		// event detection doesn't pick it up.
+		dayOfWeek = fmt.Sprintf("%s\u200B%s", dayOfWeek[:1], dayOfWeek[1:])
+		return fmt.Sprintf("%s was a %s. You had %s in %s that day.",
+			digest.StartTime.Format(DigestDisplayDateFormat),
+			dayOfWeek,
+			formattedCommitCount,
+			formattedRepoCount)
+	}
+
+	formattedEndTime := digest.EndTime.Format(DigestDisplayDateFormat)
+	var formattedStartTime string
+	if digest.StartTime.Year() == digest.EndTime.Year() {
+		formattedStartTime = digest.StartTime.Format(DigestDisplayShortDateFormat)
+	} else {
+		formattedStartTime = digest.StartTime.Format(DigestDisplayDateFormat)
+	}
+	formattedStartTime = fmt.Sprintf("%s\u200B%s", formattedStartTime[:1], formattedStartTime[1:])
+	formattedEndTime = fmt.Sprintf("%s\u200B%s", formattedEndTime[:1], formattedEndTime[1:])
+	return fmt.Sprintf("You had %s in %s the week of %s to %s.",
 		formattedCommitCount,
-		formattedRepoCount)
+		formattedRepoCount,
+		formattedStartTime,
+		formattedEndTime)
 }
 
 type Digest struct {
@@ -152,7 +176,11 @@ func newDigest(c appengine.Context, githubClient *github.Client, account *Accoun
 		if digestStartTime.Before(oldestDigestTime) {
 			break
 		}
-		digestEndTime := digestStartTime.AddDate(0, 0, 1)
+		daysInDigest := 1
+		if account.Frequency == "weekly" {
+			daysInDigest = 7
+		}
+		digestEndTime := digestStartTime.AddDate(0, 0, daysInDigest)
 
 		// Only look at repos that may have activity in the digest interval.
 		var intervalRepos []*Repo
@@ -169,6 +197,7 @@ func newDigest(c appengine.Context, githubClient *github.Client, account *Accoun
 			RepoDigests: make([]*RepoDigest, 0, len(intervalRepos)),
 			StartTime:   digestStartTime,
 			EndTime:     digestEndTime,
+			Weekly:      account.Frequency == "weekly",
 		})
 	}
 

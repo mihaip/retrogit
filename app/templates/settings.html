@@ -17,16 +17,41 @@
 
 <div class="setting">
   <label>
+    Frequency:
+    <select name="frequency" id="frequency" onchange="updateWeeklyDayContainer()">
+      <option value="daily" {{if eq "daily" .Account.Frequency}}selected{{end}}>Daily</option>
+      <option value="weekly" {{if eq "weekly" .Account.Frequency}}selected{{end}}>Weekly</option>
+    </select>
+    <span id="weekly-day-container">
+      on
+      <select name="weekly_day">
+        <option value="0" {{if eq 0 .Account.WeeklyDay}}selected{{end}}>Sundays</option>
+        <option value="1" {{if eq 1 .Account.WeeklyDay}}selected{{end}}>Mondays</option>
+        <option value="2" {{if eq 2 .Account.WeeklyDay}}selected{{end}}>Tuesdays</option>
+        <option value="3" {{if eq 3 .Account.WeeklyDay}}selected{{end}}>Wednesdays</option>
+        <option value="4" {{if eq 4 .Account.WeeklyDay}}selected{{end}}>Thursdays</option>
+        <option value="5" {{if eq 5 .Account.WeeklyDay}}selected{{end}}>Fridays</option>
+        <option value="6" {{if eq 6 .Account.WeeklyDay}}selected{{end}}>Saturdays</option>
+      </select>
+    </span>
+    <div class="explanation">
+      How often you'd like to get digests. If there is no activity on that day or week, then no email will be sent.
+    </div>
+  </label>
+</div>
+
+<div class="setting">
+  <label>
     Timezone:
     <select name="timezone_name">
-        {{$accountTimezoneName := .Account.TimezoneName}}
-        {{range .Timezones}}
-          {{if .LocationName}}
-            <option value="{{.LocationName}}" {{if eq .LocationName $accountTimezoneName}}selected{{end}}>{{.LocationName}} (GMT {{.DisplayUTCOffset}})</option>
-          {{else}}
-            <option disabled></option>
-          {{end}}
+      {{$accountTimezoneName := .Account.TimezoneName}}
+      {{range .Timezones}}
+        {{if .LocationName}}
+          <option value="{{.LocationName}}" {{if eq .LocationName $accountTimezoneName}}selected{{end}}>{{.LocationName}} (GMT {{.DisplayUTCOffset}})</option>
+        {{else}}
+          <option disabled></option>
         {{end}}
+      {{end}}
     </select>
     <div class="explanation">
       Used for determining day boundaries and timestamps in emails.
@@ -95,6 +120,19 @@
 
   <input type="submit" value="Save Settings">
 </form>
+
+<script>
+  function updateWeeklyDayContainer() {
+    var frequencyNode = document.getElementById("frequency");
+    var weeklyDayContainerNode = document.getElementById("weekly-day-container");
+    if (frequencyNode.value == "weekly") {
+      weeklyDayContainerNode.style.display = "inline";
+    } else {
+      weeklyDayContainerNode.style.display = "none";
+    }
+  }
+  updateWeeklyDayContainer();
+</script>
 
 {{end}}
 

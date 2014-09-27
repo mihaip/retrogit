@@ -16,6 +16,7 @@
 </p>
 
 {{range .IntervalDigests }}
+  {{$interval := .}}
   <h1 style="{{style "interval-header"}}">{{.Header}}</h1>
 
   <p>{{.Description}}</p>
@@ -36,7 +37,7 @@
             <a href="{{.URL}}"
                style="{{style "link" "commit.footer.link"}}">{{.DisplaySHA}}</a>
             <i title={{.DisplayDateTooltip}}
-               style="{{style "commit.footer.date"}}">{{.DisplayDate}}</i>
+               style="{{style "commit.footer.date"}}">{{if $interval.Weekly}}{{.WeeklyDisplayDate}}{{else}}{{.DisplayDate}}{{end}}</i>
           </div>
         </div>
       {{end}}
