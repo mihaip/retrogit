@@ -21,17 +21,21 @@ a {
   margin: 0;
 }
 
+.repos {
+  margin-left: 1em;
+}
+
 .repos h2 {
-  font-size: 32px;
+  font-size: 16px;
   font-weight: bold;
   position: relative;
-  margin: 15px 0 10px;
+  margin: 10px 0 5px;
 }
 
 .repos h2:after {
   content: "";
   position: absolute;
-  bottom: 4px;
+  bottom: 2px;
   left: 0;
   right: 0;
   height: 1px;
@@ -39,7 +43,7 @@ a {
 }
 
 .repos h2 .avatar {
-  height: 28px;
+  height: 16px;
 }
 
 .repos ul {

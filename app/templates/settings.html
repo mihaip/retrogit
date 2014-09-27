@@ -74,51 +74,61 @@
     </div>
 </div>
 
-<p>
-  You have {{len .Repos.AllRepos}} repositories. Select which you would like to include in your digest:
-</p>
+<div class="setting">
+  <label>
+    Include
+    <select id="included-repos" onchange="updateReposContainer()">
+      <option value="all" {{if not .Account.ExcludedRepoIds}}selected{{end}}>all</option>
+      <option value="some" {{if .Account.ExcludedRepoIds}}selected{{end}}>some</option>
+    </select>
+    of your {{len .Repos.AllRepos}} repositories in the digest.
 
-<div class="repos">
-  <h2>
-    <a href="https://github.com/{{.User.Login}}">
-    <img src="{{.User.AvatarURL}}" class="avatar">{{.User.Login}}</a>
-  </h2>
-  <ul>
-    {{range .Repos.UserRepos}}
-      {{template "repo" .}}
-    {{end}}
-  </ul>
+    <div id="repos-container">
+      <div class="repos">
+        <h2>
+          <a href="https://github.com/{{.User.Login}}">
+          <img src="{{.User.AvatarURL}}" class="avatar">{{.User.Login}}</a>
+        </h2>
+        <ul>
+          {{range .Repos.UserRepos}}
+            {{template "repo" .}}
+          {{end}}
+        </ul>
+      </div>
+
+      {{range .Repos.OtherUserRepos}}
+        <div class="repos">
+          <h2>
+            <a href="https://github.com/{{.User.Login}}">
+            <img src="{{.User.AvatarURL}}" class="avatar">{{.User.Login}}</a>
+          </h2>
+          <ul>
+            {{range .Repos}}
+              {{template "repo" .}}
+            {{end}}
+          </ul>
+        </div>
+      {{end}}
+
+      {{range .Repos.OrgRepos}}
+        <div class="repos">
+          <h2>
+            <a href="https://github.com/{{.Org.Login}}">
+            <img src="{{.Org.AvatarURL}}" class="avatar">{{.Org.Login}}</a>
+          </h2>
+          <ul>
+            {{range .Repos}}
+              {{template "repo" .}}
+            {{end}}
+          </ul>
+        </div>
+      {{end}}
+    </div>
+  </label>
 </div>
 
-{{range .Repos.OtherUserRepos}}
-  <div class="repos">
-    <h2>
-      <a href="https://github.com/{{.User.Login}}">
-      <img src="{{.User.AvatarURL}}" class="avatar">{{.User.Login}}</a>
-    </h2>
-    <ul>
-      {{range .Repos}}
-        {{template "repo" .}}
-      {{end}}
-    </ul>
-  </div>
-{{end}}
+<input type="submit" value="Save Settings">
 
-{{range .Repos.OrgRepos}}
-  <div class="repos">
-    <h2>
-      <a href="https://github.com/{{.Org.Login}}">
-      <img src="{{.Org.AvatarURL}}" class="avatar">{{.Org.Login}}</a>
-    </h2>
-    <ul>
-      {{range .Repos}}
-        {{template "repo" .}}
-      {{end}}
-    </ul>
-  </div>
-{{end}}
-
-  <input type="submit" value="Save Settings">
 </form>
 
 <script>
@@ -131,7 +141,23 @@
       weeklyDayContainerNode.style.display = "none";
     }
   }
+
+  function updateReposContainer() {
+    var includedReposNode = document.getElementById("included-repos");
+    var reposContainerNode = document.getElementById("repos-container");
+    if (includedReposNode.value == "some") {
+      reposContainerNode.style.display = "block";
+    } else {
+      var repoCheckboxes = document.querySelectorAll(".repo input[type=checkbox]");
+      for (var i = 0; i < repoCheckboxes.length; i++) {
+        repoCheckboxes[i].checked = true;
+      }
+      reposContainerNode.style.display = "none";
+    }
+  }
+
   updateWeeklyDayContainer();
+  updateReposContainer();
 </script>
 
 {{end}}
