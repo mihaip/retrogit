@@ -21,6 +21,3 @@ function updateReposContainer() {
     reposContainerNode.style.display = "none";
   }
 }
-
-updateWeeklyDayContainer();
-updateReposContainer();

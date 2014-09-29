@@ -13,6 +13,8 @@
 
 {{define "body"}}
 
+<script src="/static/settings.js"></script>
+
 <form method="POST" action="{{routeUrl "save-settings"}}">
 
 <div class="setting">
@@ -131,7 +133,10 @@
 
 </form>
 
-<script src="/static/settings.js"></script>
+<script>
+updateWeeklyDayContainer();
+updateReposContainer();
+</script>
 
 {{end}}
 
