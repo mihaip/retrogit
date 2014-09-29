@@ -13,7 +13,12 @@
 <form id="send-form" method="POST" action="{{routeUrl "send-digest"}}">
   <input type="submit" value="Email Digest">
 </form>
--
-<a href="{{routeUrl "settings"}}">Settings</a>
+
+<p>
+  You'll be getting a {{.SettingsSummary.Frequency}} digest of your past
+  past activity in {{.SettingsSummary.RepositoryCount}} repositories sent to
+  <code>{{.SettingsSummary.EmailAddress}}</code>.
+  <a href="{{routeUrl "settings"}}">Change settings</a>
+<p>
 
 {{end}}

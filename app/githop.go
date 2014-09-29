@@ -185,7 +185,37 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := templates["index"].Execute(w, nil); err != nil {
+
+	oauthTransport := githubOAuthTransport(c)
+	oauthTransport.Token = &account.OAuthToken
+	githubClient := github.NewClient(oauthTransport.Client())
+
+	user, _, err := githubClient.Users.Get("")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	repos, err := getRepos(c, githubClient, account, user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	emailAddress, err := account.GetDigestEmailAddress(githubClient)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var settingsSummary = map[string]interface{}{
+		"Frequency":       account.Frequency,
+		"RepositoryCount": strconv.Itoa(len(repos.AllRepos) - len(account.ExcludedRepoIds)),
+		"EmailAddress":    emailAddress,
+	}
+	var data = map[string]interface{}{
+		"SettingsSummary": settingsSummary,
+	}
+	if err := templates["index"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
