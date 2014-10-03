@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"appengine"
@@ -190,29 +191,44 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
-	user, _, err := githubClient.Users.Get("")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	var user *github.User
+	var userErr error
+	var emailAddress string
+	var emailAddressErr error
+	go func() {
+		user, _, userErr = githubClient.Users.Get("")
+		wg.Done()
+	}()
+	go func() {
+		emailAddress, emailAddressErr = account.GetDigestEmailAddress(githubClient)
+		wg.Done()
+	}()
+	wg.Wait()
+	if userErr != nil {
+		http.Error(w, userErr.Error(), http.StatusInternalServerError)
+		return
+	}
+	if emailAddressErr != nil {
+		http.Error(w, emailAddressErr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	repos, err := getRepos(c, githubClient, account, user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	var repositoryCount string
+	if len(account.ExcludedRepoIds) > 0 {
+		repositoryCount = fmt.Sprintf("all but %d", len(account.ExcludedRepoIds))
+	} else {
+		repositoryCount = "all"
 	}
 
-	emailAddress, err := account.GetDigestEmailAddress(githubClient)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	var settingsSummary = map[string]interface{}{
 		"Frequency":       account.Frequency,
-		"RepositoryCount": strconv.Itoa(len(repos.AllRepos) - len(account.ExcludedRepoIds)),
+		"RepositoryCount": repositoryCount,
 		"EmailAddress":    emailAddress,
 	}
 	var data = map[string]interface{}{
+		"User":	user,
 		"SettingsSummary": settingsSummary,
 	}
 	if err := templates["index"].Execute(w, data); err != nil {

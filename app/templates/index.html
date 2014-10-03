@@ -3,6 +3,14 @@
 {{define "body"}}
 
 <p>
+  Signed in as
+  <a href="https://github.com/{{.User.Login}}"
+     title="{{.User.Name}}">
+    <img src="{{.User.AvatarURL}}"
+         width="20"
+         height="20"
+         border="0">{{.User.Login}}
+  </a>.
   <a href="{{routeUrl "sign-out"}}">
     Sign Out
   </a>

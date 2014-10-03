@@ -46,6 +46,7 @@ func (t *CachingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 			t.Context.Errorf("Error readings bytes for cached response: %v", err)
 		}
 	}
+	t.Context.Infof("Fetching %s", req.URL)
 	resp, err = t.Transport.RoundTrip(req)
 	if err != nil || resp.StatusCode != 200 {
 		return
