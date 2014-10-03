@@ -228,7 +228,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		"EmailAddress":    emailAddress,
 	}
 	var data = map[string]interface{}{
-		"User":	user,
+		"User":            user,
 		"SettingsSummary": settingsSummary,
 	}
 	if err := templates["index"].Execute(w, data); err != nil {
