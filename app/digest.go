@@ -1,6 +1,7 @@
 package githop
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -29,6 +30,23 @@ type DigestCommit struct {
 	RepositoryCommit *github.RepositoryCommit
 }
 
+func safeFormattedDate(date string) string {
+	// Insert zero-width spaces every few characters so that Apple Data
+	// Detectors and Gmail's calendar event dection don't pick up on these
+	// dates.
+	var buffer bytes.Buffer
+	dateLength := len(date)
+	for i := 0; i < dateLength; i += 2 {
+		if i == dateLength-1 {
+			buffer.WriteString(date[i : i+1])
+		} else {
+			buffer.WriteString(date[i : i+2])
+		}
+		buffer.WriteString("\u2060")
+	}
+	return buffer.String()
+}
+
 func newDigestCommit(commit *github.RepositoryCommit, repo *Repo, location *time.Location) DigestCommit {
 	messagePieces := strings.SplitN(*commit.Commit.Message, "\n", 2)
 	title := messagePieces[0]
@@ -50,11 +68,11 @@ func newDigestCommit(commit *github.RepositoryCommit, repo *Repo, location *time
 func (commit DigestCommit) DisplayDate() string {
 	// Prefer the date the commit was pushed, since that's what GitHub filters
 	// and sorts by.
-	return commit.PushDate.Format(CommitDisplayDateFormat)
+	return safeFormattedDate(commit.PushDate.Format(CommitDisplayDateFormat))
 }
 
 func (commit DigestCommit) WeeklyDisplayDate() string {
-	return commit.PushDate.Format(CommitDisplayDateFullFormat)
+	return safeFormattedDate(commit.PushDate.Format(CommitDisplayDateFullFormat))
 }
 
 func (commit DigestCommit) DisplayDateTooltip() string {
@@ -124,13 +142,9 @@ func (digest *IntervalDigest) Description() string {
 	}
 
 	if !digest.Weekly {
-		dayOfWeek := digest.StartTime.Format(DigestDisplayDayOfWeekFormat)
-		// Insert a zero-width space inside the day of the week so that Gmail's
-		// event detection doesn't pick it up.
-		dayOfWeek = fmt.Sprintf("%s\u200B%s", dayOfWeek[:1], dayOfWeek[1:])
 		return fmt.Sprintf("%s was a %s. You had %s in %s that day.",
-			digest.StartTime.Format(DigestDisplayDateFormat),
-			dayOfWeek,
+			safeFormattedDate(digest.StartTime.Format(DigestDisplayDateFormat)),
+			safeFormattedDate(digest.StartTime.Format(DigestDisplayDayOfWeekFormat)),
 			formattedCommitCount,
 			formattedRepoCount)
 	}
@@ -142,13 +156,11 @@ func (digest *IntervalDigest) Description() string {
 	} else {
 		formattedStartTime = digest.StartTime.Format(DigestDisplayDateFormat)
 	}
-	formattedStartTime = fmt.Sprintf("%s\u200B%s", formattedStartTime[:1], formattedStartTime[1:])
-	formattedEndTime = fmt.Sprintf("%s\u200B%s", formattedEndTime[:1], formattedEndTime[1:])
 	return fmt.Sprintf("You had %s in %s the week of %s to %s.",
 		formattedCommitCount,
 		formattedRepoCount,
-		formattedStartTime,
-		formattedEndTime)
+		safeFormattedDate(formattedStartTime),
+		safeFormattedDate(formattedEndTime))
 }
 
 type Digest struct {
