@@ -67,3 +67,21 @@ a {
   color: #999;
   font-style: italic;
 }
+
+#delete-account-form {
+  border-top: solid 1px #ccc;
+  margin-top: 1em;
+  padding-top: 1em;
+}
+
+input[type="submit"].destructive {
+  -webkit-appearance: none;
+  display: inline;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  text-decoration: underline;
+  color: #900;
+}

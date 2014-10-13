@@ -51,6 +51,7 @@ func init() {
 
 	router.HandleFunc("/account/settings", settingsHandler).Name("settings").Methods("GET")
 	router.HandleFunc("/account/settings", saveSettingsHandler).Name("save-settings").Methods("POST")
+	router.HandleFunc("/account/delete", deleteAccountHandler).Name("delete-account").Methods("POST")
 
 	router.HandleFunc("/admin/digest", digestAdminHandler)
 	http.Handle("/", router)
@@ -510,6 +511,24 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	settingsUrl, _ := router.Get("settings").URL()
 	http.Redirect(w, r, settingsUrl.String(), http.StatusFound)
+}
+
+func deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	userId := session.Values[sessionConfig.UserIdKey].(int)
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	account.Delete(c)
+	session.Options.MaxAge = -1
+	session.Save(r, w)
+
+	indexUrl, _ := router.Get("index").URL()
+	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 }
 
 func digestAdminHandler(w http.ResponseWriter, r *http.Request) {

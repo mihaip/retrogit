@@ -133,6 +133,11 @@
 
 </form>
 
+<form id="delete-account-form" method="POST" action="{{routeUrl "delete-account"}}" onsubmit="return confirmDeleteAccount()">
+  If you'd like all data that's stored about your GitHub account removed, you can
+  <input type="submit" value="Delete Your Account" class="destructive">.
+</form>
+
 <script>
 updateWeeklyDayContainer();
 updateReposContainer();

@@ -98,6 +98,12 @@ func (account *Account) Put(c appengine.Context) error {
 	return err
 }
 
+func (account *Account) Delete(c appengine.Context) error {
+	key := datastore.NewKey(c, "Account", "", int64(account.GitHubUserId), nil)
+	err := datastore.Delete(c, key)
+	return err
+}
+
 func (account *Account) GetDigestEmailAddress(githubClient *github.Client) (string, error) {
 	if len(account.DigestEmailAddress) > 0 {
 		return account.DigestEmailAddress, nil
