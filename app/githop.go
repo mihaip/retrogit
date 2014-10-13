@@ -51,6 +51,7 @@ func init() {
 
 	router.HandleFunc("/account/settings", settingsHandler).Name("settings").Methods("GET")
 	router.HandleFunc("/account/settings", saveSettingsHandler).Name("save-settings").Methods("POST")
+	router.HandleFunc("/account/set-initial-timezone", setInitialTimezoneHandler).Name("set-initial-timezone").Methods("POST")
 	router.HandleFunc("/account/delete", deleteAccountHandler).Name("delete-account").Methods("POST")
 
 	router.HandleFunc("/admin/digest", digestAdminHandler)
@@ -231,6 +232,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	var data = map[string]interface{}{
 		"User":            user,
 		"SettingsSummary": settingsSummary,
+		"DetectTimezone":  !account.HasTimezoneSet,
 	}
 	if err := templates["index"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -511,6 +513,31 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	settingsUrl, _ := router.Get("settings").URL()
 	http.Redirect(w, r, settingsUrl.String(), http.StatusFound)
+}
+
+func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	userId := session.Values[sessionConfig.UserIdKey].(int)
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	timezoneName := r.FormValue("timezone_name")
+	_, err = time.LoadLocation(timezoneName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	account.TimezoneName = timezoneName
+
+	err = account.Put(c)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func deleteAccountHandler(w http.ResponseWriter, r *http.Request) {

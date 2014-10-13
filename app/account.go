@@ -21,6 +21,7 @@ type Account struct {
 	OAuthToken           oauth.Token    `datastore:"-,"`
 	TimezoneName         string         `datastore:",noindex"`
 	TimezoneLocation     *time.Location `datastore:"-,"`
+	HasTimezoneSet       bool           `datastore:"-,"`
 	ExcludedRepoIds      []int          `datastore:",noindex"`
 	DigestEmailAddress   string
 	Frequency            string
@@ -48,7 +49,8 @@ func initAccount(account *Account) error {
 	if err != nil {
 		return err
 	}
-	if len(account.TimezoneName) == 0 {
+	account.HasTimezoneSet = len(account.TimezoneName) > 0
+	if !account.HasTimezoneSet {
 		account.TimezoneName = "America/Los_Angeles"
 	}
 	if len(account.Frequency) == 0 {

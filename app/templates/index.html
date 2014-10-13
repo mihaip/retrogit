@@ -29,4 +29,24 @@
   <a href="{{routeUrl "settings"}}">Change settings</a>
 <p>
 
+{{if .DetectTimezone }}
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/jstimezonedetect/1.0.4/jstz.min.js"></script>
+<script>
+  var timezoneName = jstz.determine().name();
+  var preferredTimezoneNames = {
+    "America/Santa_Isabel": "America/Los_Angeles"
+  };
+  if (timezoneName in preferredTimezoneNames) {
+    timezoneName = preferredTimezoneNames[timezoneName]
+  }
+  var formData = new FormData();
+  formData.append("timezone_name", timezoneName);
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "{{routeUrl "set-initial-timezone"}}", true);
+  xhr.send(formData);
+</script>
+
+{{end}}
+
 {{end}}
