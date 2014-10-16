@@ -1,0 +1,23 @@
+{{define "flash"}}
+
+<div class="flash">
+  {{.}}
+</div>
+<script>
+(function() {
+  var flashes = document.querySelectorAll(".flash");
+  var flash = flashes[flashes.length - 1];
+  setTimeout(function() {
+    flash.classList.add("visible");
+  }, 0);
+  setTimeout(function() {
+    flash.classList.remove("visible");
+  }, 5000);
+  setTimeout(function() {
+    flash.parentNode.removeChild(flash);
+  }, 5500);
+})();
+</script>
+
+
+{{end}}
