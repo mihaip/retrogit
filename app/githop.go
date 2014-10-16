@@ -229,10 +229,15 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		"RepositoryCount": repositoryCount,
 		"EmailAddress":    emailAddress,
 	}
+	flashes := session.Flashes()
+	if len(flashes) > 0 {
+		session.Save(r, w)
+	}
 	var data = map[string]interface{}{
 		"User":            user,
 		"SettingsSummary": settingsSummary,
 		"DetectTimezone":  !account.HasTimezoneSet,
+		"Flashes":         flashes,
 	}
 	if err := templates["index"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -281,6 +286,8 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session.AddFlash("Digest emailed!")
+	session.Save(r, w)
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 }

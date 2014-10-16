@@ -85,3 +85,20 @@ input[type="submit"].destructive {
   text-decoration: underline;
   color: #900;
 }
+
+.flash {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12pt;
+  padding: 10px;
+  transition: opacity ease-in-out 300ms;
+  opacity: 0;
+}
+
+.flash.visible {
+  opacity: 1;
+}
