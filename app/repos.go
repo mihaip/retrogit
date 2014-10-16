@@ -216,17 +216,20 @@ type OrgRepos struct {
 }
 
 func getRepos(c appengine.Context, githubClient *github.Client, account *Account, user *github.User) (*Repos, error) {
-	// The username parameter must be left blank so that we can get all of the
-	// repositories the user has access to, not just ones that they own.
 	clientUserRepos := make([]github.Repository, 0)
 	page := 1
 	for {
-		pageClientUserRepos, response, err := githubClient.Repositories.List("", &github.RepositoryListOptions{
-			ListOptions: github.ListOptions{
-				Page:    page,
-				PerPage: 100,
-			},
-		})
+		pageClientUserRepos, response, err := githubClient.Repositories.List(
+			// The username parameter must be left blank so that we can get all
+			// of the repositories the user has access to, not just ones that
+			// they own.
+			"",
+			&github.RepositoryListOptions{
+				ListOptions: github.ListOptions{
+					Page:    page,
+					PerPage: 100,
+				},
+			})
 		if err != nil {
 			return nil, err
 		}
@@ -264,7 +267,13 @@ func getRepos(c appengine.Context, githubClient *github.Client, account *Account
 		}
 	}
 
-	orgs, _, err := githubClient.Organizations.List("", nil)
+	orgs, _, err := githubClient.Organizations.List(
+		"",
+		&github.ListOptions{
+			// Don't bother with pagination for the organization list, the user
+			// is unlikely to have that many.
+			PerPage: 100,
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -272,11 +281,26 @@ func getRepos(c appengine.Context, githubClient *github.Client, account *Account
 	repos.OrgRepos = make([]*OrgRepos, 0, len(orgs))
 	for i := range orgs {
 		org := &orgs[i]
-		clientOrgRepos, _, err := githubClient.Repositories.ListByOrg(*org.Login, nil)
-		if err != nil {
-			return nil, err
+		clientOrgRepos := make([]github.Repository, 0)
+		page := 1
+		for {
+			pageClientOrgRepos, response, err := githubClient.Repositories.ListByOrg(
+				*org.Login,
+				&github.RepositoryListByOrgOptions{
+					ListOptions: github.ListOptions{
+						Page:    page,
+						PerPage: 100,
+					},
+				})
+			if err != nil {
+				return nil, err
+			}
+			clientOrgRepos = append(clientOrgRepos, pageClientOrgRepos...)
+			if response.NextPage == 0 {
+				break
+			}
+			page = response.NextPage
 		}
-
 		orgRepos := make([]*Repo, 0, len(clientOrgRepos))
 		allRepoCount += len(clientOrgRepos)
 		for j := range clientOrgRepos {
