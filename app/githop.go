@@ -545,7 +545,36 @@ func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Since we've now computed an initial timezone for the user, start a
+	// background task to compute their digest. This ensures that we have most
+	// of the relevant data already cached if they choose to view or email their
+	// digest immediately.
+	cacheDigestForAccountFunc.Call(c, account.GitHubUserId)
 }
+
+var cacheDigestForAccountFunc = delay.Func(
+	"cacheDigestForAccount",
+	func(c appengine.Context, githubUserId int) error {
+		c.Infof("Caching digest for %d...", githubUserId)
+		account, err := getAccount(c, githubUserId)
+		if err != nil {
+			c.Errorf("  Error looking up account: %s", err.Error())
+			// Not returning error since we don't want these tasks to be
+			// retried.
+			return nil
+		}
+
+		oauthTransport := githubOAuthTransport(c)
+		oauthTransport.Token = &account.OAuthToken
+		githubClient := github.NewClient(oauthTransport.Client())
+		_, err = newDigest(c, githubClient, account)
+		if err != nil {
+			c.Errorf("  Error computing digest: %s", err.Error())
+		}
+		c.Infof("  Done!")
+		return nil
+	})
 
 func deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
