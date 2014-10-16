@@ -20,11 +20,13 @@
   </a>
 </p>
 
-<a href="{{routeUrl "view-digest"}}">View Digest</a>
--
-<form id="send-form" method="POST" action="{{routeUrl "send-digest"}}">
-  <input type="submit" value="Email Digest">
-</form>
+<div id="primary-actions">
+  <a href="{{routeUrl "view-digest"}}">View Digest</a>
+  -
+  <form id="send-form" method="POST" action="{{routeUrl "send-digest"}}">
+    <input type="submit" value="Email Digest">
+  </form>
+</div>
 
 <p>
   You'll be getting a {{.SettingsSummary.Frequency}} digest of your past

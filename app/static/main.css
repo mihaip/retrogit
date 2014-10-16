@@ -8,6 +8,15 @@ a {
   text-decoration: none;
 }
 
+#primary-actions,
+#primary-actions input[type="submit"] {
+  font-size: 14pt;
+}
+
+#primary-actions {
+  margin: 2em 0;
+}
+
 #send-form {
   display: inline;
 }
