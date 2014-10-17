@@ -629,6 +629,7 @@ func digestAdminHandler(w http.ResponseWriter, r *http.Request) {
 
 func githubOAuthTransport(c appengine.Context) *oauth.Transport {
 	appengineTransport := &urlfetch.Transport{Context: c}
+	appengineTransport.Deadline = time.Second * 60
 	cachingTransport := &CachingTransport{
 		Transport: appengineTransport,
 		Context:   c,

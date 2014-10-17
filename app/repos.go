@@ -64,7 +64,7 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoId in
 			Author:      userLogin,
 			Until:       beforeCreationTime,
 		})
-	if response.StatusCode == 409 {
+	if response != nil && response.StatusCode == 409 {
 		// GitHub returns with a 409 when a repository is empty.
 		commits = make([]github.RepositoryCommit, 0)
 	} else if err != nil {
