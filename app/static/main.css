@@ -8,6 +8,19 @@ a {
   text-decoration: none;
 }
 
+#sign-in-form {
+  margin: 0 auto;
+}
+
+#sign-in-form input[type="submit"] {
+  font-size: 18pt;
+  font-weight: bold;
+}
+
+#sign-in-form label {
+  display: block;
+}
+
 #primary-actions,
 #primary-actions input[type="submit"] {
   font-size: 14pt;

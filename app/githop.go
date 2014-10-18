@@ -27,6 +27,7 @@ import (
 
 var router *mux.Router
 var githubOauthConfig oauth.Config
+var githubOauthPublicConfig oauth.Config
 var timezones Timezones
 var sessionStore *sessions.CookieStore
 var sessionConfig SessionConfig
@@ -36,7 +37,8 @@ func init() {
 	initTemplates()
 	timezones = initTimezones()
 	sessionStore, sessionConfig = initSession()
-	initGithubOAuthConfig()
+	githubOauthConfig = initGithubOAuthConfig(true)
+	githubOauthPublicConfig = initGithubOAuthConfig(false)
 
 	router = mux.NewRouter()
 	router.HandleFunc("/", indexHandler).Name("index")
@@ -58,7 +60,7 @@ func init() {
 	http.Handle("/", router)
 }
 
-func initGithubOAuthConfig() {
+func initGithubOAuthConfig(includePrivateRepos bool) (config oauth.Config) {
 	path := "config/github-oauth"
 	if appengine.IsDevAppServer() {
 		path += "-dev"
@@ -68,13 +70,18 @@ func initGithubOAuthConfig() {
 	if err != nil {
 		log.Panicf("Could not read GitHub OAuth config from %s: %s", path, err.Error())
 	}
-	err = json.Unmarshal(configBytes, &githubOauthConfig)
+	err = json.Unmarshal(configBytes, &config)
 	if err != nil {
 		log.Panicf("Could not parse GitHub OAuth config %s: %s", configBytes, err.Error())
 	}
-	githubOauthConfig.Scope = "repo, user:email"
-	githubOauthConfig.AuthURL = "https://github.com/login/oauth/authorize"
-	githubOauthConfig.TokenURL = "https://github.com/login/oauth/access_token"
+	repoScopeModifier := ""
+	if !includePrivateRepos {
+		repoScopeModifier = "public_"
+	}
+	config.Scope = fmt.Sprintf("%srepo user:email", repoScopeModifier)
+	config.AuthURL = "https://github.com/login/oauth/authorize"
+	config.TokenURL = "https://github.com/login/oauth/access_token"
+	return
 }
 
 func initTemplates() {
@@ -156,7 +163,11 @@ func loadStyles() (result map[string]template.CSS) {
 }
 
 func signInHandler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, githubOauthConfig.AuthCodeURL(""), http.StatusFound)
+	config := &githubOauthConfig
+	if r.FormValue("include_private") != "1" {
+		config = &githubOauthPublicConfig
+	}
+	http.Redirect(w, r, config.AuthCodeURL(""), http.StatusFound)
 }
 
 func signOutHandler(w http.ResponseWriter, r *http.Request) {

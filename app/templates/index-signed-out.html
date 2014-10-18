@@ -2,8 +2,12 @@
 
 {{define "body"}}
 
-<form method="POST" action="{{routeUrl "sign-in"}}">
+<form id="sign-in-form" method="POST" action="{{routeUrl "sign-in"}}">
   <input type="submit" value="Sign In with GitHub">
+  <label>
+    <input type="checkbox" name="include_private" value="1" checked>
+    Include private repositories
+  </label>
 </form>
 
 {{end}}
