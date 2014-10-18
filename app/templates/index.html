@@ -15,9 +15,9 @@
          height="20"
          border="0">{{.User.Login}}
   </a>.
-  <a href="{{routeUrl "sign-out"}}">
-    Sign Out
-  </a>
+  <form method="POST" action="{{routeUrl "sign-out"}}">
+    <input type="submit" value="Sign Out">
+  </form>
 </p>
 
 <div id="primary-actions">

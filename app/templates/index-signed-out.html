@@ -2,8 +2,8 @@
 
 {{define "body"}}
 
-<a href="{{routeUrl "sign-in"}}">
-  Sign In
-</a>
+<form method="POST" action="{{routeUrl "sign-in"}}">
+  <input type="submit" value="Sign In with GitHub">
+</form>
 
 {{end}}

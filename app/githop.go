@@ -41,8 +41,8 @@ func init() {
 	router = mux.NewRouter()
 	router.HandleFunc("/", indexHandler).Name("index")
 
-	router.HandleFunc("/session/sign-in", signInHandler).Name("sign-in")
-	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out")
+	router.HandleFunc("/session/sign-in", signInHandler).Name("sign-in").Methods("POST")
+	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out").Methods("POST")
 	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
 
 	router.HandleFunc("/digest/view", viewDigestHandler).Name("view-digest")
