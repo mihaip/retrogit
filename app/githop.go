@@ -373,9 +373,9 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	}
 
 	digestMessage := &mail.Message{
-		Sender:   "GitHop <mihai.parparita@gmail.com>",
+		Sender:   "RetroGit <digests@retrogit.com>",
 		To:       []string{emailAddress},
-		Subject:  "GitHop Digest",
+		Subject:  "RetroGit Digest",
 		HTMLBody: digestHtml.String(),
 	}
 	err = mail.Send(c, digestMessage)
