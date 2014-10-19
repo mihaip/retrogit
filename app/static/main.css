@@ -1,6 +1,48 @@
+html {
+  position: relative;
+  height: 100%;
+}
+
 body {
   font-family: Helvetica, Arial, sans-serif;
-  font-size: 10pt;
+  font-size: 14pt;
+  line-height: 24pt;
+  background: url("images/paper-background.png");
+  position: relative;
+  min-height: 100%;
+  margin: 0;
+  padding: 10px 66px;
+}
+
+.perforated-edge {
+  position: absolute;
+  width: 46px;
+  height: 100%;
+  top: 0;
+}
+
+.perforated-edge.right {
+  right: 0;
+  background-image: url("images/perforated-edge-right.png");
+}
+
+.perforated-edge.left {
+  left: 0;
+  background-image: url("images/perforated-edge-left.png");
+}
+
+.logo {
+  width: 497px;
+  height: 77px;
+  background-image: url("images/logo.png");
+  margin: 31px auto 10px;
+}
+
+.page-body {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 20px;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 a {

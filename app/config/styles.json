@@ -1,7 +1,7 @@
 {
   "digest": {
     "font-family": "Helvetica, Arial, sans-serif",
-    "font-size": "10pt",
+    "font-size": "14pt",
     "color": "#000",
     "max-width": "800px",
     "margin": "0"
@@ -11,7 +11,6 @@
     "color": "#4183c4"
   },
   "intro-paragraph": {
-    "font-size": "12pt",
     "user-link": {
       "font-weight": "bold",
       "color": "#000"
@@ -25,7 +24,7 @@
     "font-size": "24pt",
     "font-weight": "bold",
     "margin": ".75em 0 .5em 0",
-    "border-bottom": "solid 1px #ddd"
+    "border-bottom": "dashed 2px #666"
   },
   "repository-header": {
     "font-size": "18pt",
@@ -33,24 +32,21 @@
     "margin": ".5em 0"
   },
   "commit": {
-    "background": "#fafafa",
-    "border": "solid 1px #ccc",
-    "border-radius": "3px",
-    "margin": "1em 0",
+    "border-bottom": "dashed 1px #666",
+    "margin": "20px 0",
+    "font-size": "12pt",
     "title": {
-      "padding": "8px",
+      "padding": "8px 0",
       "margin": "0"
     },
     "message": {
       "margin": "0",
-      "padding": "0 8px 8px",
+      "padding-botom": "8px",
       "white-space": "pre-wrap"
     },
     "footer": {
-      "background": "#fff",
-      "border-top": "solid 1px #ddd",
-      "border-radius": "0 0 3px 3px",
-      "padding": "8px",
+      "padding": "8px 0",
+      "margin-bottom": "20px",
       "date": {
         "color": "#666"
       },

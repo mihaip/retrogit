@@ -7,8 +7,12 @@
 	<link rel="stylesheet" href="/static/octicons/octicons.css">
 </head>
 <body>
-	<h1>{{template "title" .}}</h1>
+  <div class="perforated-edge right"></div>
+  <div class="perforated-edge left"></div>
+  <div class="logo"></div>
 
-  {{template "body" .}}
+  <div class="page-body">
+    {{template "body" .}}
+  </div>
 </body>
 </html>
