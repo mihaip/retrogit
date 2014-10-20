@@ -2,7 +2,7 @@
 
 Service that shows you your GitHub commits from a year ago. Includes a mail digest to that you can see each day what you were up to in the past.
 
-It's currently running at [https://retro-git.appspot.com/](https://retro-git.appspot.com/).
+It's currently running at [https://www.retrogit.com/](https://www.retrogit.com/).
 
 ## Running Locally
 
