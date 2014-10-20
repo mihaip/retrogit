@@ -1,11 +1,50 @@
 body {
   font-family: Helvetica, Arial, sans-serif;
   font-size: 10pt;
+  margin: 0;
+  padding: 0;
 }
 
 a {
   color: #4183c4;
   text-decoration: none;
+}
+
+.header {
+  background: #eee;
+  position: relative;
+  height: 154px;
+  padding-top; 10px;
+  overflow: hidden;
+}
+
+.header:after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  bottom: 0;
+  background: url("images/body-shadow@2x.png");
+  background-size: 4px 4px;
+}
+
+.header img {
+  display: block;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  margin-left: -557px;
+}
+
+.body {
+  padding: 10px;
+  max-width: 1104px;
+  margin: 0 auto;
+}
+
+.body h1 {
+  margin-top: 0;
 }
 
 #sign-in-form {

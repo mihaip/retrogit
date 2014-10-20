@@ -7,8 +7,14 @@
 	<link rel="stylesheet" href="/static/octicons/octicons.css">
 </head>
 <body>
-	<h1>{{template "title" .}}</h1>
+  <div class="header">
+    <img src="/static/images/header.png" srcset="/static/images/header.png 1x, /static/images/header@2x.png 2x" width="1114" height="154" alt="GitHop">
+  </div>
 
-  {{template "body" .}}
+  <div class="body">
+    <h1>{{template "title" .}}</h1>
+
+    {{template "body" .}}
+  </div>
 </body>
 </html>

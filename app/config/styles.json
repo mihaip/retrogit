@@ -3,7 +3,7 @@
     "font-family": "Helvetica, Arial, sans-serif",
     "font-size": "10pt",
     "color": "#000",
-    "max-width": "800px",
+    "max-width": "1104px",
     "margin": "0"
   },
   "link": {
@@ -35,7 +35,6 @@
   "commit": {
     "background": "#fafafa",
     "border": "solid 1px #ccc",
-    "border-radius": "3px",
     "margin": "1em 0",
     "title": {
       "padding": "8px",
@@ -49,7 +48,6 @@
     "footer": {
       "background": "#fff",
       "border-top": "solid 1px #ddd",
-      "border-radius": "0 0 3px 3px",
       "padding": "8px",
       "date": {
         "color": "#666"
