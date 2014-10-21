@@ -33,7 +33,7 @@
     "margin": ".5em 0"
   },
   "commit": {
-    "background": "#fffbe8",
+    "background": "#fefcef",
     "border": "solid 1px #dddac8",
     "box-shadow": "1px 1px 2px rgba(0, 0, 0, 0.11)",
     "container": {
@@ -56,7 +56,7 @@
         "height": "0",
         "border": "solid",
         "border-width": "0 0 20px 10px",
-        "border-color": "transparent transparent #fdf9e5 transparent"
+        "border-color": "transparent transparent #fefcef transparent"
       }
     },
     "title": {
