@@ -3,6 +3,7 @@ body {
   font-size: 10pt;
   margin: 0;
   padding: 0;
+  background: #eee;
 }
 
 a {
@@ -11,7 +12,6 @@ a {
 }
 
 .header {
-  background: #eee;
   position: relative;
   height: 164px;
   overflow: hidden;
@@ -34,6 +34,10 @@ a {
   top: 10px;
   left: 50%;
   margin-left: -557px;
+}
+
+.body-background {
+  background: #fff;
 }
 
 .body {

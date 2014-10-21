@@ -8,7 +8,7 @@
   },
   "link": {
     "text-decoration": "none",
-    "color": "#4183c4"
+    "color": "#e73b31"
   },
   "intro-paragraph": {
     "font-size": "12pt",
@@ -33,22 +33,46 @@
     "margin": ".5em 0"
   },
   "commit": {
-    "background": "#fafafa",
-    "border": "solid 1px #ccc",
-    "margin": "1em 0",
+    "background": "#fffbe8",
+    "border": "solid 1px #dddac8",
+    "box-shadow": "1px 1px 2px rgba(0, 0, 0, 0.11)",
+    "container": {
+      "margin": "1em 0"
+    },
+    "corner": {
+      "width": "0",
+      "max-height": "0",
+      "float": "left",
+      "cover": {
+        "width": "0",
+        "height": "0",
+        "border": "solid",
+        "border-width": "0 0 20px 10px",
+        "border-color": "transparent transparent #dddac8 white"
+      },
+      "border": {
+        "margin": "1px 0 0 1px",
+        "width": "0",
+        "height": "0",
+        "border": "solid",
+        "border-width": "0 0 20px 10px",
+        "border-color": "transparent transparent #fdf9e5 transparent"
+      }
+    },
     "title": {
-      "padding": "8px",
-      "margin": "0"
+      "padding": "10px",
+      "margin": "0",
+      "z-index": "2"
     },
     "message": {
       "margin": "0",
-      "padding": "0 8px 8px",
+      "padding": "0 10px 10px",
       "white-space": "pre-wrap"
     },
     "footer": {
-      "background": "#fff",
-      "border-top": "solid 1px #ddd",
-      "padding": "8px",
+      "border-top": "dashed 1px #cac7b7",
+      "margin": "0 10px",
+      "padding": "10px 0",
       "date": {
         "color": "#666"
       },
