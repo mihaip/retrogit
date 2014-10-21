@@ -191,7 +191,9 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	account, err := getAccount(c, userId)
 	if account == nil {
 		// Can't look up the account, session cookie must be invalid, clear it.
-		indexUrl, _ := router.Get("sign-out").URL()
+		session.Options.MaxAge = -1
+		session.Save(r, w)
+		indexUrl, _ := router.Get("index").URL()
 		http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 		return
 	}
