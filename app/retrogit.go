@@ -1,4 +1,4 @@
-package githop
+package retrogit
 
 import (
 	"bytes"
