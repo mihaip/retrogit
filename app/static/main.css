@@ -35,6 +35,7 @@ a {
 }
 
 .header img {
+  border: 0;
   display: block;
   position: absolute;
   top: 10px;
