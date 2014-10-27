@@ -136,10 +136,11 @@ func loadStyles() (result map[string]template.CSS) {
 	}
 	var stylesJson interface{}
 	err = json.Unmarshal(stylesBytes, &stylesJson)
-	if err != nil {
-		log.Panicf("Could not parse styles JSON %s: %s", stylesBytes, err.Error())
-	}
 	result = make(map[string]template.CSS)
+	if err != nil {
+		log.Printf("Could not parse styles JSON %s: %s", stylesBytes, err.Error())
+		return
+	}
 	var parse func(string, map[string]interface{}, *string)
 	parse = func(path string, stylesJson map[string]interface{}, currentStyle *string) {
 		if path != "" {
@@ -154,7 +155,7 @@ func loadStyles() (result map[string]template.CSS) {
 				parse(path+k, v.(map[string]interface{}), &nestedStyle)
 				result[path+k] = template.CSS(nestedStyle)
 			default:
-				log.Panicf("Unexpected type for %s in styles JSON", k)
+				log.Printf("Unexpected type for %s in styles JSON, ignoring", k)
 			}
 		}
 	}
