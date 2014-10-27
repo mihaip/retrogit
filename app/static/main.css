@@ -44,12 +44,13 @@ a {
 
 .body {
   padding: 10px;
-  max-width: 1104px;
+  max-width: 1102px;
   margin: 0 auto;
 }
 
 .body h1 {
   margin-top: 0;
+  color: #756344;
 }
 
 #sign-in-form {
@@ -135,7 +136,7 @@ a {
 }
 
 #delete-account-form {
-  border-top: solid 1px #ccc;
+  border-top: dashed 1px #ccc;
   margin-top: 1em;
   padding-top: 1em;
 }

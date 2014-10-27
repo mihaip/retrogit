@@ -3,12 +3,15 @@
     "font-family": "Helvetica, Arial, sans-serif",
     "font-size": "10pt",
     "color": "#000",
-    "max-width": "1104px",
+    "max-width": "1102px",
     "margin": "0"
   },
   "link": {
     "text-decoration": "none",
     "color": "#e73b31"
+  },
+  "monospace": {
+    "font-family": "Consolas,\"Liberation Mono\",Menlo,Courier,monospace"
   },
   "intro-paragraph": {
     "font-size": "12pt",
@@ -22,15 +25,18 @@
     }
   },
   "interval-header": {
-    "font-size": "24pt",
+    "font-size": "20pt",
     "font-weight": "bold",
     "margin": ".75em 0 .5em 0",
-    "border-bottom": "solid 1px #ddd"
+    "border-bottom": "dashed 1px #ccc"
   },
   "repository-header": {
-    "font-size": "18pt",
+    "font-size": "16pt",
     "font-weight": "bold",
-    "margin": ".5em 0"
+    "margin": ".5em 0",
+    "link": {
+      "color": "#b52e26"
+    }
   },
   "commit": {
     "background": "#fefcef",

@@ -17,13 +17,13 @@
 
 {{range .IntervalDigests }}
   {{$interval := .}}
-  <h1 style="{{style "interval-header"}}">{{.Header}}</h1>
+  <h1 style="{{style "monospace" "interval-header"}}">{{.Header}}</h1>
 
   <p>{{.Description}}</p>
 
   {{range .RepoDigests}}
-    <h2 style="{{style "repository-header"}}">
-      <a href="{{.Repo.HTMLURL}}" style="{{style "link"}}">{{.Repo.FullName}}</a>
+    <h2 style="{{style "monospace" "repository-header"}}">
+      <a href="{{.Repo.HTMLURL}}" style="{{style "link" "repository-header.link"}}">{{.Repo.FullName}}</a>
     </h2>
 
     <div>
@@ -38,7 +38,7 @@
           <div style="{{style "commit"}}">
             <h3 style="{{style "commit.title"}}">{{.Title}}</h3>
             {{if .Message}}
-              <pre style="{{style "commit.message"}}">{{.Message}}</pre>
+              <pre style="{{style "monospace" "commit.message"}}">{{.Message}}</pre>
             {{end}}
             <div style="{{style "commit.footer"}}">
               <a href="{{.URL}}"
