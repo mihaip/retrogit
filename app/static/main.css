@@ -3,7 +3,6 @@ body {
   font-size: 10pt;
   margin: 0;
   padding: 0;
-  background: #eee;
 }
 
 a {
@@ -15,6 +14,7 @@ a {
   position: relative;
   height: 164px;
   overflow: hidden;
+  background: #eee;
 }
 
 @media (max-width: 600px) {
@@ -40,10 +40,6 @@ a {
   top: 10px;
   left: 50%;
   margin-left: -555px;
-}
-
-.body-background {
-  background: #fff;
 }
 
 .body {
