@@ -17,6 +17,12 @@ a {
   overflow: hidden;
 }
 
+@media (max-width: 600px) {
+  .header {
+    height: 138px;
+  }
+}
+
 .header:after {
   content: "";
   position: absolute;
