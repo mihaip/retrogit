@@ -55,12 +55,56 @@ a {
 }
 
 #sign-in-form {
-  margin: 0 auto;
+  text-align: center;
+}
+
+#sign-in-form .octicon-mark-github {
+  pointer-events: none;
+  vertical-align: -2px;
+  color: #76201b;
 }
 
 #sign-in-form input[type="submit"] {
+  outline: 0;
+  -webkit-appearance: none;
+  border: dashed 2px #b52e26;
+  color: #b52e26;
+  font-family: Courier, monospace;
+  background: transparent;
+  border-radius: 8px;
   font-size: 18pt;
   font-weight: bold;
+  padding: 8px 5px 5px 43px;
+  margin-left: -44px;
+  cursor: pointer;
+}
+
+#sign-in-form input[type="submit"]:before {
+  content: "\f00a";
+}
+
+#sign-in-form label {
+  color: #a02b24;
+  font-family: Courier, monospace;
+  font-size: 14px;
+}
+
+#sign-in-form input[type="checkbox"] {
+  visibility: hidden;
+}
+
+#sign-in-form input[type="checkbox"]:before {
+  color: #a02b24;
+  visibility: visible;
+  content: "\2610";
+  font-size: 18px;
+  position: relative;
+  top: -6px;
+  left: 6px;
+}
+
+#sign-in-form input[type="checkbox"]:checked:before {
+  content: "\2611";
 }
 
 #sign-in-form label {
