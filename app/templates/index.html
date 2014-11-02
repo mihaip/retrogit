@@ -6,7 +6,7 @@
   {{template "flash" .}}
 {{end}}
 
-<p>
+<div>
   Signed in as
   <a href="https://github.com/{{.User.Login}}"
      title="{{.User.Name}}">
@@ -15,16 +15,18 @@
          height="20"
          border="0">{{.User.Login}}
   </a>.
-  <form method="POST" action="{{routeUrl "sign-out"}}">
-    <input type="submit" value="Sign Out">
+  <form class="inline" method="POST" action="{{routeUrl "sign-out"}}">
+    <input type="submit" class="inline" value="Sign Out">
   </form>
-</p>
+</div>
 
 <div id="primary-actions">
-  <a href="{{routeUrl "view-digest"}}">View Digest</a>
-  -
-  <form id="send-form" method="POST" action="{{routeUrl "send-digest"}}">
-    <input type="submit" value="Email Digest">
+  <form class="inline" method="GET" action="{{routeUrl "view-digest"}}">
+    <input type="submit" class="action-button" value="View Digest">
+  </form>
+  or
+  <form class="inline" method="POST" action="{{routeUrl "send-digest"}}">
+    <input type="submit" class="action-button" value="Email Digest">
   </form>
 </div>
 

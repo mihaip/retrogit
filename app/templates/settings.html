@@ -129,13 +129,13 @@
   </label>
 </div>
 
-<input type="submit" value="Save Settings">
+<input type="submit" class="action-button" value="Save Settings">
 
 </form>
 
 <form id="delete-account-form" method="POST" action="{{routeUrl "delete-account"}}" onsubmit="return confirmDeleteAccount()">
   If you'd like all data that's stored about your GitHub account removed, you can
-  <input type="submit" value="Delete Your Account" class="destructive">.
+  <input type="submit" value="delete your account" class="inline destructive">.
 </form>
 
 <script>

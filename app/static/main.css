@@ -10,6 +10,10 @@ a {
   text-decoration: none;
 }
 
+a:hover {
+  text-decoration: underline;
+}
+
 .header {
   position: relative;
   height: 164px;
@@ -54,17 +58,7 @@ a {
   color: #756344;
 }
 
-#sign-in-form {
-  text-align: center;
-}
-
-#sign-in-form .octicon-mark-github {
-  pointer-events: none;
-  vertical-align: -2px;
-  color: #76201b;
-}
-
-#sign-in-form input[type="submit"] {
+.action-button {
   outline: 0;
   -webkit-appearance: none;
   border: dashed 2px #b52e26;
@@ -74,9 +68,72 @@ a {
   border-radius: 8px;
   font-size: 18pt;
   font-weight: bold;
+  padding: 3px 5px;
+  cursor: pointer;
+  background: #fefcef;
+}
+
+.action-button:active {
+  background: #fff193;
+}
+
+form.inline {
+  display: inline;
+}
+
+input[type="submit"].inline {
+  -webkit-appearance: none;
+  display: inline;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  color: #4183c4;
+  cursor: pointer;
+}
+
+input[type="submit"].inline:hover {
+  text-decoration: underline;
+}
+
+input[type="submit"].inline.destructive {
+  text-decoration: underline;
+  color: #900;
+}
+
+.flash {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12pt;
+  padding: 10px;
+  transition: opacity ease-in-out 300ms;
+  opacity: 0;
+}
+
+.flash.visible {
+  opacity: 1;
+}
+
+#sign-in-form {
+  text-align: center;
+}
+
+#sign-in-form .octicon-mark-github {
+  pointer-events: none;
+  vertical-align: -2px;
+  color: #76201b;
+  z-index: 1;
+  position: relative;
+}
+
+#sign-in-form input[type="submit"] {
   padding: 8px 5px 5px 43px;
   margin-left: -44px;
-  cursor: pointer;
 }
 
 #sign-in-form input[type="submit"]:before {
@@ -111,17 +168,11 @@ a {
   display: block;
 }
 
-#primary-actions,
-#primary-actions input[type="submit"] {
-  font-size: 14pt;
-}
-
 #primary-actions {
   margin: 2em 0;
-}
-
-#send-form {
-  display: inline;
+  text-align: center;
+  font-size: 14pt;
+  color: #999;
 }
 
 .setting {
@@ -184,33 +235,4 @@ a {
   border-top: dashed 1px #ccc;
   margin-top: 1em;
   padding-top: 1em;
-}
-
-input[type="submit"].destructive {
-  -webkit-appearance: none;
-  display: inline;
-  background: transparent;
-  padding: 0;
-  border: 0;
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 10pt;
-  text-decoration: underline;
-  color: #900;
-}
-
-.flash {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.75);
-  border-radius: 4px;
-  color: #fff;
-  font-size: 12pt;
-  padding: 10px;
-  transition: opacity ease-in-out 300ms;
-  opacity: 0;
-}
-
-.flash.visible {
-  opacity: 1;
 }
