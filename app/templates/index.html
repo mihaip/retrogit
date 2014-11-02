@@ -6,18 +6,25 @@
   {{template "flash" .}}
 {{end}}
 
-<div>
-  Signed in as
+<div class="blurb">
+  You're signed in as
   <a href="https://github.com/{{.User.Login}}"
      title="{{.User.Name}}">
     <img src="{{.User.AvatarURL}}"
          width="20"
          height="20"
-         border="0">{{.User.Login}}
-  </a>.
-  <form class="inline" method="POST" action="{{routeUrl "sign-out"}}">
-    <input type="submit" class="inline" value="Sign Out">
-  </form>
+         border="0"
+         class="avatar">{{.User.Login}}
+  </a>
+  (<form class="inline" method="POST" action="{{routeUrl "sign-out"}}"><input type="submit" class="inline" value="sign out"></form>).
+  You'll be getting a {{.SettingsSummary.Frequency}} digest of your past
+  GitHub activity in {{.SettingsSummary.RepositoryCount}} repositories sent to
+  <code>{{.SettingsSummary.EmailAddress}}</code>
+  (<a href="{{routeUrl "settings"}}">change settings</a>).
+</div>
+
+<div class="blurb">
+  If you just can't wait, you can get your digest now:
 </div>
 
 <div id="primary-actions">
@@ -29,13 +36,6 @@
     <input type="submit" class="action-button" value="Email Digest">
   </form>
 </div>
-
-<p>
-  You'll be getting a {{.SettingsSummary.Frequency}} digest of your past
-  past activity in {{.SettingsSummary.RepositoryCount}} repositories sent to
-  <code>{{.SettingsSummary.EmailAddress}}</code>.
-  <a href="{{routeUrl "settings"}}">Change settings</a>
-<p>
 
 {{if .DetectTimezone }}
 
