@@ -41,8 +41,10 @@ func safeFormattedDate(date string) string {
 			buffer.WriteString(date[i : i+1])
 		} else {
 			buffer.WriteString(date[i : i+2])
+			if date[i] != ' ' && date[i+1] != ' ' && i < dateLength-2 {
+				buffer.WriteString("\u200b")
+			}
 		}
-		buffer.WriteString("\u200b")
 	}
 	return buffer.String()
 }
