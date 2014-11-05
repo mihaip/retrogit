@@ -42,7 +42,7 @@ func safeFormattedDate(date string) string {
 		} else {
 			buffer.WriteString(date[i : i+2])
 		}
-		buffer.WriteString("\u2060")
+		buffer.WriteString("\u200b")
 	}
 	return buffer.String()
 }
