@@ -56,7 +56,8 @@ func init() {
 	router.HandleFunc("/account/set-initial-timezone", setInitialTimezoneHandler).Name("set-initial-timezone").Methods("POST")
 	router.HandleFunc("/account/delete", deleteAccountHandler).Name("delete-account").Methods("POST")
 
-	router.HandleFunc("/admin/digest", digestAdminHandler)
+	router.HandleFunc("/admin/users", usersAdminHandler)
+	router.HandleFunc("/admin/digest", digestAdminHandler).Name("digest-admin")
 	http.Handle("/", router)
 }
 
@@ -606,6 +607,46 @@ func deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+}
+
+func usersAdminHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+	accounts, err := getAllAccounts(c)
+	if err != nil {
+		c.Errorf("Error looking up accounts: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	users := make([]map[string]interface{}, len(accounts))
+	for i := range accounts {
+		account := &accounts[i]
+		oauthTransport := githubOAuthTransport(c)
+		oauthTransport.Token = &account.OAuthToken
+		githubClient := github.NewClient(oauthTransport.Client())
+
+		user, _, err := githubClient.Users.Get("")
+
+		emailAddress, err := account.GetDigestEmailAddress(githubClient)
+		if err != nil {
+			emailAddress = err.Error()
+		}
+
+		repos, reposErr := getRepos(c, githubClient, account, user)
+
+		users[i] = map[string]interface{}{
+			"Account":      account,
+			"User":         user,
+			"EmailAddress": emailAddress,
+			"Repos":        repos,
+			"ReposError":   reposErr,
+		}
+	}
+	var data = map[string]interface{}{
+		"Users": users,
+	}
+	if err := templates["users-admin"].Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func digestAdminHandler(w http.ResponseWriter, r *http.Request) {

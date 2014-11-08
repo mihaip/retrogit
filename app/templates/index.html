@@ -8,14 +8,7 @@
 
 <div class="blurb">
   You're signed in as
-  <a href="https://github.com/{{.User.Login}}"
-     title="{{.User.Name}}">
-    <img src="{{.User.AvatarURL}}"
-         width="20"
-         height="20"
-         border="0"
-         class="avatar">{{.User.Login}}
-  </a>
+  {{template "user" .User}}
   (<form class="inline" method="POST" action="{{routeUrl "sign-out"}}"><input type="submit" class="inline" value="sign out"></form>).
   You'll be getting a {{.SettingsSummary.Frequency}} digest of your past
   GitHub activity in {{.SettingsSummary.RepositoryCount}} repositories sent to
