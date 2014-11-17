@@ -287,6 +287,7 @@ func getRepos(c appengine.Context, githubClient *github.Client, account *Account
 			pageClientOrgRepos, response, err := githubClient.Repositories.ListByOrg(
 				*org.Login,
 				&github.RepositoryListByOrgOptions{
+					Type: "member",
 					ListOptions: github.ListOptions{
 						Page:    page,
 						PerPage: 100,
