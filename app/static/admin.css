@@ -1,0 +1,22 @@
+#users-table {
+  border-collapse: collapse;
+}
+
+#users-table th,
+#users-table td {
+  padding: 2px 5px;
+}
+
+#users-table th {
+  text-align: left;
+}
+
+#users-table td {
+  border: solid 1px #eee;
+  font-size: 14px;
+}
+
+#users-table .avatar {
+  padding-right: 1px;
+  vertical-align: text-bottom;
+}

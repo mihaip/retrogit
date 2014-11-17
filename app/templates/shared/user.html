@@ -1,0 +1,12 @@
+{{define "user"}}
+
+<a href="https://github.com/{{.Login}}"
+   title="{{.Name}}">
+  <img src="{{.AvatarURL}}"
+       width="20"
+       height="20"
+       border="0"
+       class="avatar">{{.Login}}
+</a>
+
+{{end}}

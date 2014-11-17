@@ -1,0 +1,36 @@
+{{define "title"}}Users Admin{{end}}
+
+{{define "body"}}
+
+<link rel="stylesheet" href="/static/admin.css">
+
+<table id="users-table">
+  <thead>
+    <tr>
+      <th>User ID</th>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Frequency</th>
+      <th>Repositories</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Users}}
+      <tr>
+        <td><a href="{{routeUrl "digest-admin"}}?user_id={{.GitHubUserId}}">{{.Account.GitHubUserId}}</a></td>
+        <td>{{template "user" .User}}</td>
+        <td>{{.EmailAddress}}</td>
+        <td>{{.Account.Frequency}}</td>
+        <td>
+          {{if .ReposError}}
+            {{.ReposError}}
+          {{else}}
+            {{len .Repos.AllRepos}} from {{len .Repos.OtherUserRepos}} other users and {{len .Repos.OrgRepos}} organizations
+          {{end}}
+        </td>
+      </tr>
+    {{end}}
+  </tbody>
+</table>
+
+{{end}}
