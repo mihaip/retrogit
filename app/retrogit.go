@@ -295,13 +295,17 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = sendDigestForAccount(account, c)
+	sent, err := sendDigestForAccount(account, c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	session.AddFlash("Digest emailed!")
+	if sent {
+		session.AddFlash("Digest emailed!")
+	} else {
+		session.AddFlash("No digest was sent, it was empty or disabled.")
+	}
 	session.Save(r, w)
 	indexUrl, _ := router.Get("index").URL()
 	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
@@ -355,6 +359,14 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
 
+	emailAddress, err := account.GetDigestEmailAddress(githubClient)
+	if err != nil {
+		return false, err
+	}
+	if emailAddress == "disabled" {
+		return false, nil
+	}
+
 	digest, err := newDigest(c, githubClient, account)
 	if err != nil {
 		return false, err
@@ -368,11 +380,6 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	}
 	var digestHtml bytes.Buffer
 	if err := templates["digest-email"].Execute(&digestHtml, data); err != nil {
-		return false, err
-	}
-
-	emailAddress, err := account.GetDigestEmailAddress(githubClient)
-	if err != nil {
 		return false, err
 	}
 

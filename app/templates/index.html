@@ -10,24 +10,33 @@
   You're signed in as
   {{template "user" .User}}
   (<form class="inline" method="POST" action="{{routeUrl "sign-out"}}"><input type="submit" class="inline" value="sign out"></form>).
-  You'll be getting a {{.SettingsSummary.Frequency}} digest of your past
-  GitHub activity in {{.SettingsSummary.RepositoryCount}} repositories sent to
-  <code>{{.SettingsSummary.EmailAddress}}</code>
+  {{if eq .SettingsSummary.EmailAddress "disabled"}}
+    You've disabled emails, but you can still view your digest for your
+    GitHub activity in {{.SettingsSummary.RepositoryCount}} repositories below
+  {{else}}
+    You'll be getting a {{.SettingsSummary.Frequency}} digest of your past
+    GitHub activity in {{.SettingsSummary.RepositoryCount}} repositories sent to
+    <code>{{.SettingsSummary.EmailAddress}}</code>
+  {{end}}
   (<a href="{{routeUrl "settings"}}">change settings</a>).
 </div>
 
+{{if ne .SettingsSummary.EmailAddress "disabled"}}
 <div class="blurb">
   If you just can't wait, you can get your digest now:
 </div>
+{{end}}
 
 <div id="primary-actions">
   <form class="inline" method="GET" action="{{routeUrl "view-digest"}}">
     <input type="submit" class="action-button" value="View Digest">
   </form>
-  or
-  <form class="inline" method="POST" action="{{routeUrl "send-digest"}}">
-    <input type="submit" class="action-button" value="Email Digest">
-  </form>
+  {{if ne .SettingsSummary.EmailAddress "disabled"}}
+    or
+    <form class="inline" method="POST" action="{{routeUrl "send-digest"}}">
+      <input type="submit" class="action-button" value="Email Digest">
+    </form>
+  {{end}}
 </div>
 
 {{if .DetectTimezone }}

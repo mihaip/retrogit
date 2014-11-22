@@ -69,6 +69,8 @@
       {{range .EmailAddresses}}
           <option value="{{.}}" {{if eq . $accountEmailAddress}}selected{{end}}>{{.}}</option>
       {{end}}
+      <option disabled></option>
+      <option value="disabled" {{if eq "disabled" $accountEmailAddress}}selected{{end}}>Disabled (no email)</option>
     </select>
   </label>
     <div class="explanation">
