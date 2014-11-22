@@ -86,5 +86,12 @@
         "float": "right"
       }
     }
+  },
+  "email-footer": {
+    "color": "#999",
+    "font-size": "9pt",
+    "paragraph": {
+      "margin": "0.5em 0"
+    }
   }
 }

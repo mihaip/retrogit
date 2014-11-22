@@ -95,6 +95,19 @@ func initTemplates() {
 			}
 			return url.String(), nil
 		},
+		"absoluteRouteUrl": func(name string) (string, error) {
+			url, err := router.Get(name).URL()
+			if err != nil {
+				return "", err
+			}
+			var baseUrl string
+			if appengine.IsDevAppServer() {
+				baseUrl = "http://localhost:8080"
+			} else {
+				baseUrl = "https://www.retrogit.com"
+			}
+			return baseUrl + url.String(), nil
+		},
 		"style": func(names ...string) (result template.CSS) {
 			for _, name := range names {
 				result += styles[name]
@@ -125,7 +138,7 @@ func initTemplates() {
 		_, templateFileName = filepath.Split(fileNames[0])
 		templates[templateName], err = template.New(templateFileName).Funcs(funcMap).ParseFiles(fileNames...)
 		if err != nil {
-			log.Panicf("Could not parse template files for %s: %s", templateFileName, err.Error())
+			log.Printf("Could not parse template files for %s: %s", templateFileName, err.Error())
 		}
 	}
 }
