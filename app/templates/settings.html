@@ -15,6 +15,10 @@
 
 <script src="/static/settings.js"></script>
 
+{{range .Flashes}}
+  {{template "flash" .}}
+{{end}}
+
 <form method="POST" action="{{routeUrl "save-settings"}}">
 
 <div class="setting">

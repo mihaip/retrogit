@@ -469,6 +469,11 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	flashes := session.Flashes()
+	if len(flashes) > 0 {
+		session.Save(r, w)
+	}
+
 	var data = map[string]interface{}{
 		"Account":             account,
 		"User":                user,
@@ -476,6 +481,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 		"Repos":               repos,
 		"EmailAddresses":      emailAddresses,
 		"AccountEmailAddress": accountEmailAddress,
+		"Flashes":             flashes,
 	}
 	if err := templates["settings"].Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -540,6 +546,8 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session.AddFlash("Settings saved.")
+	session.Save(r, w)
 	settingsUrl, _ := router.Get("settings").URL()
 	http.Redirect(w, r, settingsUrl.String(), http.StatusFound)
 }
