@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"path/filepath"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,19 +30,19 @@ var githubOauthPublicConfig oauth.Config
 var timezones Timezones
 var sessionStore *sessions.CookieStore
 var sessionConfig SessionConfig
-var templates map[string]*template.Template
+var templates map[string]*Template
 
 func init() {
-	initTemplates()
+	templates = loadTemplates()
 	timezones = initTimezones()
 	sessionStore, sessionConfig = initSession()
 	githubOauthConfig = initGithubOAuthConfig(true)
 	githubOauthPublicConfig = initGithubOAuthConfig(false)
 
 	router = mux.NewRouter()
-	router.HandleFunc("/", indexHandler).Name("index")
+	router.Handle("/", AppHandler(indexHandler)).Name("index")
 
-	router.HandleFunc("/session/sign-in", signInHandler).Name("sign-in").Methods("POST")
+	router.Handle("/session/sign-in", AppHandler(signInHandler)).Name("sign-in").Methods("POST")
 	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out").Methods("POST")
 	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
 
@@ -51,7 +50,7 @@ func init() {
 	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
 	router.HandleFunc("/digest/cron", digestCronHandler)
 
-	router.HandleFunc("/account/settings", settingsHandler).Name("settings").Methods("GET")
+	router.Handle("/account/settings", AppHandler(settingsHandler)).Name("settings").Methods("GET")
 	router.HandleFunc("/account/settings", saveSettingsHandler).Name("save-settings").Methods("POST")
 	router.HandleFunc("/account/set-initial-timezone", setInitialTimezoneHandler).Name("set-initial-timezone").Methods("POST")
 	router.HandleFunc("/account/delete", deleteAccountHandler).Name("delete-account").Methods("POST")
@@ -85,122 +84,11 @@ func initGithubOAuthConfig(includePrivateRepos bool) (config oauth.Config) {
 	return
 }
 
-func initTemplates() {
-	styles := loadStyles()
-	funcMap := template.FuncMap{
-		"routeUrl": func(name string) (string, error) {
-			url, err := router.Get(name).URL()
-			if err != nil {
-				return "", err
-			}
-			return url.String(), nil
-		},
-		"absoluteRouteUrl": func(name string) (string, error) {
-			url, err := router.Get(name).URL()
-			if err != nil {
-				return "", err
-			}
-			var baseUrl string
-			if appengine.IsDevAppServer() {
-				baseUrl = "http://localhost:8080"
-			} else {
-				baseUrl = "https://www.retrogit.com"
-			}
-			return baseUrl + url.String(), nil
-		},
-		"style": func(names ...string) (result template.CSS) {
-			for _, name := range names {
-				result += styles[name]
-			}
-			return
-		},
-	}
-	sharedFileNames, err := filepath.Glob("templates/shared/*.html")
-	if err != nil {
-		log.Panicf("Could not read shared template file names %s", err.Error())
-	}
-	templateFileNames, err := filepath.Glob("templates/*.html")
-	if err != nil {
-		log.Panicf("Could not read template file names %s", err.Error())
-	}
-	templates = make(map[string]*template.Template)
-	for _, templateFileName := range templateFileNames {
-		templateName := filepath.Base(templateFileName)
-		templateName = strings.TrimSuffix(templateName, filepath.Ext(templateName))
-		fileNames := make([]string, 0, len(sharedFileNames)+2)
-		// The base template has to come first, except for the email template, which
-		// doesn't use it
-		if templateName != "digest-email" {
-			fileNames = append(fileNames, "templates/base/page.html")
-		}
-		fileNames = append(fileNames, templateFileName)
-		fileNames = append(fileNames, sharedFileNames...)
-		_, templateFileName = filepath.Split(fileNames[0])
-		templates[templateName], err = template.New(templateFileName).Funcs(funcMap).ParseFiles(fileNames...)
-		if err != nil {
-			log.Printf("Could not parse template files for %s: %s", templateFileName, err.Error())
-		}
-	}
-}
-
-func loadStyles() (result map[string]template.CSS) {
-	stylesBytes, err := ioutil.ReadFile("config/styles.json")
-	if err != nil {
-		log.Panicf("Could not read styles JSON: %s", err.Error())
-	}
-	var stylesJson interface{}
-	err = json.Unmarshal(stylesBytes, &stylesJson)
-	result = make(map[string]template.CSS)
-	if err != nil {
-		log.Printf("Could not parse styles JSON %s: %s", stylesBytes, err.Error())
-		return
-	}
-	var parse func(string, map[string]interface{}, *string)
-	parse = func(path string, stylesJson map[string]interface{}, currentStyle *string) {
-		if path != "" {
-			path += "."
-		}
-		for k, v := range stylesJson {
-			switch v.(type) {
-			case string:
-				*currentStyle += k + ":" + v.(string) + ";"
-			case map[string]interface{}:
-				nestedStyle := ""
-				parse(path+k, v.(map[string]interface{}), &nestedStyle)
-				result[path+k] = template.CSS(nestedStyle)
-			default:
-				log.Printf("Unexpected type for %s in styles JSON, ignoring", k)
-			}
-		}
-	}
-	parse("", stylesJson.(map[string]interface{}), nil)
-	return
-}
-
-func signInHandler(w http.ResponseWriter, r *http.Request) {
-	config := &githubOauthConfig
-	if r.FormValue("include_private") != "1" {
-		config = &githubOauthPublicConfig
-	}
-	http.Redirect(w, r, config.AuthCodeURL(""), http.StatusFound)
-}
-
-func signOutHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	session.Options.MaxAge = -1
-	session.Save(r, w)
-	indexUrl, _ := router.Get("index").URL()
-	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
-}
-
-func indexHandler(w http.ResponseWriter, r *http.Request) {
+func indexHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
 	if !ok {
-		if err := templates["index-signed-out"].Execute(w, nil); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
+		return templates["index-signed-out"].Render(w, nil)
 	}
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
@@ -208,13 +96,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		// Can't look up the account, session cookie must be invalid, clear it.
 		session.Options.MaxAge = -1
 		session.Save(r, w)
-		indexUrl, _ := router.Get("index").URL()
-		http.Redirect(w, r, indexUrl.String(), http.StatusFound)
-		return
+		return RedirectToRoute("index")
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not look up account")
 	}
 
 	oauthTransport := githubOAuthTransport(c)
@@ -237,12 +122,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	wg.Wait()
 	if userErr != nil {
-		http.Error(w, userErr.Error(), http.StatusInternalServerError)
-		return
+		return GitHubFetchError(userErr, "user")
 	}
 	if emailAddressErr != nil {
-		http.Error(w, emailAddressErr.Error(), http.StatusInternalServerError)
-		return
+		return GitHubFetchError(userErr, "emails")
 	}
 
 	var repositoryCount string
@@ -267,9 +150,38 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		"DetectTimezone":  !account.HasTimezoneSet,
 		"Flashes":         flashes,
 	}
-	if err := templates["index"].Execute(w, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	return templates["index"].Render(w, data)
+}
+
+func signInHandler(w http.ResponseWriter, r *http.Request) *AppError {
+	config := &githubOauthConfig
+	if r.FormValue("include_private") != "1" {
+		config = &githubOauthPublicConfig
 	}
+	authCodeUrl := config.AuthCodeURL("")
+	if continueUrl := r.FormValue("continue_url"); continueUrl != "" {
+		if parsedAuthCodeUrl, err := url.Parse(authCodeUrl); err == nil {
+			authCodeQuery := parsedAuthCodeUrl.Query()
+			redirectUrl := authCodeQuery.Get("redirect_uri")
+			if parsedRedirectUrl, err := url.Parse(redirectUrl); err == nil {
+				redirectUrlQuery := parsedRedirectUrl.Query()
+				redirectUrlQuery.Set("continue_url", continueUrl)
+				parsedRedirectUrl.RawQuery = redirectUrlQuery.Encode()
+				authCodeQuery.Set("redirect_uri", parsedRedirectUrl.String())
+				parsedAuthCodeUrl.RawQuery = authCodeQuery.Encode()
+				authCodeUrl = parsedAuthCodeUrl.String()
+			}
+		}
+	}
+	return RedirectToUrl(authCodeUrl)
+}
+
+func signOutHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	session.Options.MaxAge = -1
+	session.Save(r, w)
+	indexUrl, _ := router.Get("index").URL()
+	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
 }
 
 func viewDigestHandler(w http.ResponseWriter, r *http.Request) {
@@ -437,18 +349,22 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	session.Values[sessionConfig.UserIdKey] = user.ID
 	session.Save(r, w)
-	indexUrl, _ := router.Get("index").URL()
-	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+	continueUrl := r.FormValue("continue_url")
+	if continueUrl == "" || !strings.HasPrefix(continueUrl, "/") {
+		indexUrl, _ := router.Get("index").URL()
+		continueUrl = indexUrl.String()
+	}
+	http.Redirect(w, r, continueUrl, http.StatusFound)
 }
 
-func settingsHandler(w http.ResponseWriter, r *http.Request) {
+func settingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId := session.Values[sessionConfig.UserIdKey].(int)
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		// TODO: redirect to sign in again
+		return InternalError(err, "Could not look up account")
 	}
 
 	oauthTransport := githubOAuthTransport(c)
@@ -457,20 +373,17 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, _, err := githubClient.Users.Get("")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return GitHubFetchError(err, "user")
 	}
 
 	repos, err := getRepos(c, githubClient, account, user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return GitHubFetchError(err, "repositories")
 	}
 
 	emails, _, err := githubClient.Users.ListEmails(nil)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return GitHubFetchError(err, "emails")
 	}
 	emailAddresses := make([]string, len(emails))
 	for i := range emails {
@@ -478,8 +391,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	accountEmailAddress, err := account.GetDigestEmailAddress(githubClient)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return GitHubFetchError(err, "emails")
 	}
 
 	flashes := session.Flashes()
@@ -496,9 +408,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 		"AccountEmailAddress": accountEmailAddress,
 		"Flashes":             flashes,
 	}
-	if err := templates["settings"].Execute(w, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	return templates["settings"].Render(w, data)
 }
 
 func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {

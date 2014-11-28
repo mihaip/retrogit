@@ -1,0 +1,22 @@
+{{define "title"}} GitHub Access Unauthorized {{end}}
+
+{{define "body"}}
+
+<div class="blurb">
+  It looks like you have a RetroGit account, but we can't access your GitHub
+  account. You may have revoked RetroGit's access (you can see this on your
+  <a href="https://github.com/settings/applications">GitHub settings page</a>).
+  If you wish to grant it access again, use the button below:
+</div>
+
+<form id="sign-in-form" method="POST" action="{{routeUrl "sign-in"}}">
+  <span class="mega-octicon octicon-mark-github"></span>
+  <input type="hidden" name="continue_url" value="{{.ContinueUrl}}">
+  <input type="submit" class="action-button" value="Sign In with GitHub">
+  <label>
+    <input type="checkbox" name="include_private" value="1" checked>
+    Include private repositories
+  </label>
+</form>
+
+{{end}}
