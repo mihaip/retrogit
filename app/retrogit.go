@@ -43,20 +43,20 @@ func init() {
 	router.Handle("/", AppHandler(indexHandler)).Name("index")
 
 	router.Handle("/session/sign-in", AppHandler(signInHandler)).Name("sign-in").Methods("POST")
-	router.HandleFunc("/session/sign-out", signOutHandler).Name("sign-out").Methods("POST")
-	router.HandleFunc("/github/callback", githubOAuthCallbackHandler)
+	router.Handle("/session/sign-out", AppHandler(signOutHandler)).Name("sign-out").Methods("POST")
+	router.Handle("/github/callback", AppHandler(githubOAuthCallbackHandler))
 
-	router.HandleFunc("/digest/view", viewDigestHandler).Name("view-digest")
-	router.HandleFunc("/digest/send", sendDigestHandler).Name("send-digest").Methods("POST")
-	router.HandleFunc("/digest/cron", digestCronHandler)
+	router.Handle("/digest/view", AppHandler(viewDigestHandler)).Name("view-digest")
+	router.Handle("/digest/send", AppHandler(sendDigestHandler)).Name("send-digest").Methods("POST")
+	router.Handle("/digest/cron", AppHandler(digestCronHandler))
 
 	router.Handle("/account/settings", AppHandler(settingsHandler)).Name("settings").Methods("GET")
-	router.HandleFunc("/account/settings", saveSettingsHandler).Name("save-settings").Methods("POST")
-	router.HandleFunc("/account/set-initial-timezone", setInitialTimezoneHandler).Name("set-initial-timezone").Methods("POST")
-	router.HandleFunc("/account/delete", deleteAccountHandler).Name("delete-account").Methods("POST")
+	router.Handle("/account/settings", AppHandler(saveSettingsHandler)).Name("save-settings").Methods("POST")
+	router.Handle("/account/set-initial-timezone", AppHandler(setInitialTimezoneHandler)).Name("set-initial-timezone").Methods("POST")
+	router.Handle("/account/delete", AppHandler(deleteAccountHandler)).Name("delete-account").Methods("POST")
 
-	router.HandleFunc("/admin/users", usersAdminHandler)
-	router.HandleFunc("/admin/digest", digestAdminHandler).Name("digest-admin")
+	router.Handle("/admin/users", AppHandler(usersAdminHandler))
+	router.Handle("/admin/digest", AppHandler(digestAdminHandler)).Name("digest-admin")
 	http.Handle("/", router)
 }
 
@@ -176,22 +176,20 @@ func signInHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	return RedirectToUrl(authCodeUrl)
 }
 
-func signOutHandler(w http.ResponseWriter, r *http.Request) {
+func signOutHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	session.Options.MaxAge = -1
 	session.Save(r, w)
-	indexUrl, _ := router.Get("index").URL()
-	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+	return RedirectToRoute("index")
 }
 
-func viewDigestHandler(w http.ResponseWriter, r *http.Request) {
+func viewDigestHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId := session.Values[sessionConfig.UserIdKey].(int)
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not look up account")
 	}
 
 	oauthTransport := githubOAuthTransport(c)
@@ -200,30 +198,26 @@ func viewDigestHandler(w http.ResponseWriter, r *http.Request) {
 
 	digest, err := newDigest(c, githubClient, account)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return GitHubFetchError(err, "digest")
 	}
 	var data = map[string]interface{}{
 		"Digest": digest,
 	}
-	if err := templates["digest-page"].Execute(w, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	return templates["digest-page"].Render(w, data)
 }
 
-func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
+func sendDigestHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId := session.Values[sessionConfig.UserIdKey].(int)
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not look up account")
 	}
 
 	sent, err := sendDigestForAccount(account, c)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not send digest")
 	}
 
 	if sent {
@@ -232,17 +226,14 @@ func sendDigestHandler(w http.ResponseWriter, r *http.Request) {
 		session.AddFlash("No digest was sent, it was empty or disabled.")
 	}
 	session.Save(r, w)
-	indexUrl, _ := router.Get("index").URL()
-	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+	return RedirectToRoute("index")
 }
 
-func digestCronHandler(w http.ResponseWriter, r *http.Request) {
+func digestCronHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	c := appengine.NewContext(r)
 	accounts, err := getAllAccounts(c)
 	if err != nil {
-		c.Errorf("Error looking up accounts: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not look up accounts")
 	}
 	for _, account := range accounts {
 		if account.Frequency == "weekly" {
@@ -257,6 +248,7 @@ func digestCronHandler(w http.ResponseWriter, r *http.Request) {
 		sendDigestForAccountFunc.Call(c, account.GitHubUserId)
 	}
 	fmt.Fprint(w, "Done")
+	return nil
 }
 
 var sendDigestForAccountFunc = delay.Func(
@@ -318,22 +310,20 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	return true, err
 }
 
-func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
+func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	code := r.FormValue("code")
 	c := appengine.NewContext(r)
 	oauthTransport := githubOAuthTransport(c)
 	token, err := oauthTransport.Exchange(code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not exchange OAuth code")
 	}
 
 	oauthTransport.Token = token
 	githubClient := github.NewClient(oauthTransport.Client())
 	user, _, err := githubClient.Users.Get("")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return GitHubFetchError(err, "user")
 	}
 
 	account := &Account{
@@ -342,8 +332,7 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = account.Put(c)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not save user")
 	}
 
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
@@ -354,7 +343,7 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		indexUrl, _ := router.Get("index").URL()
 		continueUrl = indexUrl.String()
 	}
-	http.Redirect(w, r, continueUrl, http.StatusFound)
+	return RedirectToUrl(continueUrl)
 }
 
 func settingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
@@ -411,14 +400,14 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	return templates["settings"].Render(w, data)
 }
 
-func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
+func saveSettingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId := session.Values[sessionConfig.UserIdKey].(int)
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		// TODO: redirect to sign in again
+		return InternalError(err, "Could not look up account")
 	}
 	oauthTransport := githubOAuthTransport(c)
 	oauthTransport.Token = &account.OAuthToken
@@ -426,29 +415,25 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, _, err := githubClient.Users.Get("")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return GitHubFetchError(err, "user")
 	}
 
 	repos, err := getRepos(c, githubClient, account, user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return GitHubFetchError(err, "repos")
 	}
 
 	account.Frequency = r.FormValue("frequency")
 	weeklyDay, err := strconv.Atoi(r.FormValue("weekly_day"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return BadRequest(err, "Malformed weekly_day value")
 	}
 	account.WeeklyDay = time.Weekday(weeklyDay)
 
 	timezoneName := r.FormValue("timezone_name")
 	_, err = time.LoadLocation(timezoneName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return BadRequest(err, "Malformed timezone_name value")
 	}
 	account.TimezoneName = timezoneName
 
@@ -465,38 +450,34 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = account.Put(c)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not save user")
 	}
 
 	session.AddFlash("Settings saved.")
 	session.Save(r, w)
-	settingsUrl, _ := router.Get("settings").URL()
-	http.Redirect(w, r, settingsUrl.String(), http.StatusFound)
+	return RedirectToRoute("settings")
 }
 
-func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request) {
+func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId := session.Values[sessionConfig.UserIdKey].(int)
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		// TODO: redirect to sign in again
+		return InternalError(err, "Could not look up account")
 	}
 
 	timezoneName := r.FormValue("timezone_name")
 	_, err = time.LoadLocation(timezoneName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return BadRequest(err, "Malformed timezone_name value")
 	}
 	account.TimezoneName = timezoneName
 
 	err = account.Put(c)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not save user")
 	}
 
 	// Since we've now computed an initial timezone for the user, start a
@@ -504,6 +485,8 @@ func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request) {
 	// of the relevant data already cached if they choose to view or email their
 	// digest immediately.
 	cacheDigestForAccountFunc.Call(c, account.GitHubUserId)
+
+	return nil
 }
 
 var cacheDigestForAccountFunc = delay.Func(
@@ -529,31 +512,29 @@ var cacheDigestForAccountFunc = delay.Func(
 		return nil
 	})
 
-func deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
+func deleteAccountHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId := session.Values[sessionConfig.UserIdKey].(int)
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		// TODO: redirect to sign in again
+		return InternalError(err, "Could not look up account")
 	}
 
 	account.Delete(c)
 	session.Options.MaxAge = -1
 	session.Save(r, w)
 
-	indexUrl, _ := router.Get("index").URL()
-	http.Redirect(w, r, indexUrl.String(), http.StatusFound)
+	// TODO: add a flash message saying that the account was deleted.
+	return RedirectToRoute("index")
 }
 
-func usersAdminHandler(w http.ResponseWriter, r *http.Request) {
+func usersAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	c := appengine.NewContext(r)
 	accounts, err := getAllAccounts(c)
 	if err != nil {
-		c.Errorf("Error looking up accounts: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not look up accounts")
 	}
 	users := make([]map[string]interface{}, len(accounts))
 	for i := range accounts {
@@ -582,26 +563,21 @@ func usersAdminHandler(w http.ResponseWriter, r *http.Request) {
 	var data = map[string]interface{}{
 		"Users": users,
 	}
-	if err := templates["users-admin"].Execute(w, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	return templates["users-admin"].Render(w, data)
 }
 
-func digestAdminHandler(w http.ResponseWriter, r *http.Request) {
+func digestAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	userId, err := strconv.Atoi(r.FormValue("user_id"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return BadRequest(err, "Malformed user_id value")
 	}
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if account == nil {
-		http.Error(w, "Couldn't find account", http.StatusNotFound)
-		return
+		return BadRequest(err, "user_id does not point to an account")
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return InternalError(err, "Could not look up account")
 	}
 
 	oauthTransport := githubOAuthTransport(c)
@@ -610,14 +586,12 @@ func digestAdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	digest, err := newDigest(c, githubClient, account)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return GitHubFetchError(err, "digest")
 	}
 	var data = map[string]interface{}{
 		"Digest": digest,
 	}
-	if err := templates["digest-admin"].Execute(w, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	return templates["digest-admin"].Render(w, data)
 }
 
 func githubOAuthTransport(c appengine.Context) *oauth.Transport {

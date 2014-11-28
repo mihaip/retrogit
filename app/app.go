@@ -22,6 +22,7 @@ const (
 	AppErrorTypeTemplate
 	AppErrorTypeGitHubFetch
 	AppErrorTypeRedirect
+	AppErrorTypeBadInput
 )
 
 type AppError struct {
@@ -55,6 +56,15 @@ func RedirectToUrl(url string) *AppError {
 		Message: url,
 		Code:    http.StatusFound,
 		Type:    AppErrorTypeRedirect,
+	}
+}
+
+func BadRequest(err error, message string) *AppError {
+	return &AppError{
+		Error:   err,
+		Message: message,
+		Code:    http.StatusBadRequest,
+		Type:    AppErrorTypeBadInput,
 	}
 }
 
@@ -107,7 +117,11 @@ func handleAppError(e *AppError, w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, e.Message, e.Code)
 		return
 	}
-	c.Errorf("%v", e.Error)
+	if e.Type != AppErrorTypeBadInput {
+		c.Errorf("%v", e.Error)
+	} else {
+		c.Infof("%v", e.Error)
+	}
 	http.Error(w, e.Message, e.Code)
 }
 
