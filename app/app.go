@@ -15,6 +15,7 @@ import (
 	"appengine"
 
 	"github.com/google/go-github/github"
+	"github.com/gorilla/sessions"
 )
 
 const (
@@ -30,6 +31,36 @@ type AppError struct {
 	Message string
 	Code    int
 	Type    int
+}
+
+type AppSignedInState struct {
+	Account        *Account
+	GitHubClient   *github.Client
+	session        *sessions.Session
+	request        *http.Request
+	responseWriter http.ResponseWriter
+}
+
+func (state *AppSignedInState) AddFlash(value interface{}) {
+	state.session.AddFlash(value)
+	state.saveSession()
+}
+
+func (state *AppSignedInState) Flashes() []interface{} {
+	flashes := state.session.Flashes()
+	if len(flashes) > 0 {
+		state.saveSession()
+	}
+	return flashes
+}
+
+func (state *AppSignedInState) ClearSession() {
+	state.session.Options.MaxAge = -1
+	state.saveSession()
+}
+
+func (state *AppSignedInState) saveSession() {
+	state.session.Save(state.request, state.responseWriter)
 }
 
 func GitHubFetchError(err error, fetchType string) *AppError {
@@ -84,10 +115,47 @@ func RedirectToRoute(routeName string) *AppError {
 	return RedirectToUrl(routeUrl.String())
 }
 
+func NotSignedIn() *AppError {
+	return RedirectToRoute("index")
+}
+
 type AppHandler func(http.ResponseWriter, *http.Request) *AppError
 
 func (fn AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil {
+		handleAppError(e, w, r)
+	}
+}
+
+type SignedInAppHandler func(http.ResponseWriter, *http.Request, *AppSignedInState) *AppError
+
+func (fn SignedInAppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
+	if !ok {
+		handleAppError(NotSignedIn(), w, r)
+		return
+	}
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
+	if account == nil || err != nil {
+		handleAppError(NotSignedIn(), w, r)
+		return
+	}
+
+	oauthTransport := githubOAuthTransport(c)
+	oauthTransport.Token = &account.OAuthToken
+	githubClient := github.NewClient(oauthTransport.Client())
+
+	state := &AppSignedInState{
+		Account:        account,
+		GitHubClient:   githubClient,
+		session:        session,
+		responseWriter: w,
+		request:        r,
+	}
+
+	if e := fn(w, r, state); e != nil {
 		handleAppError(e, w, r)
 	}
 }

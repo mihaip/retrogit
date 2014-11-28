@@ -46,14 +46,14 @@ func init() {
 	router.Handle("/session/sign-out", AppHandler(signOutHandler)).Name("sign-out").Methods("POST")
 	router.Handle("/github/callback", AppHandler(githubOAuthCallbackHandler))
 
-	router.Handle("/digest/view", AppHandler(viewDigestHandler)).Name("view-digest")
-	router.Handle("/digest/send", AppHandler(sendDigestHandler)).Name("send-digest").Methods("POST")
+	router.Handle("/digest/view", SignedInAppHandler(viewDigestHandler)).Name("view-digest")
+	router.Handle("/digest/send", SignedInAppHandler(sendDigestHandler)).Name("send-digest").Methods("POST")
 	router.Handle("/digest/cron", AppHandler(digestCronHandler))
 
-	router.Handle("/account/settings", AppHandler(settingsHandler)).Name("settings").Methods("GET")
-	router.Handle("/account/settings", AppHandler(saveSettingsHandler)).Name("save-settings").Methods("POST")
-	router.Handle("/account/set-initial-timezone", AppHandler(setInitialTimezoneHandler)).Name("set-initial-timezone").Methods("POST")
-	router.Handle("/account/delete", AppHandler(deleteAccountHandler)).Name("delete-account").Methods("POST")
+	router.Handle("/account/settings", SignedInAppHandler(settingsHandler)).Name("settings").Methods("GET")
+	router.Handle("/account/settings", SignedInAppHandler(saveSettingsHandler)).Name("save-settings").Methods("POST")
+	router.Handle("/account/set-initial-timezone", SignedInAppHandler(setInitialTimezoneHandler)).Name("set-initial-timezone").Methods("POST")
+	router.Handle("/account/delete", SignedInAppHandler(deleteAccountHandler)).Name("delete-account").Methods("POST")
 
 	router.Handle("/admin/users", AppHandler(usersAdminHandler))
 	router.Handle("/admin/digest", AppHandler(digestAdminHandler)).Name("digest-admin")
@@ -183,20 +183,9 @@ func signOutHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	return RedirectToRoute("index")
 }
 
-func viewDigestHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId := session.Values[sessionConfig.UserIdKey].(int)
+func viewDigestHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {
 	c := appengine.NewContext(r)
-	account, err := getAccount(c, userId)
-	if err != nil {
-		return InternalError(err, "Could not look up account")
-	}
-
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
-
-	digest, err := newDigest(c, githubClient, account)
+	digest, err := newDigest(c, state.GitHubClient, state.Account)
 	if err != nil {
 		return GitHubFetchError(err, "digest")
 	}
@@ -206,26 +195,18 @@ func viewDigestHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	return templates["digest-page"].Render(w, data)
 }
 
-func sendDigestHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId := session.Values[sessionConfig.UserIdKey].(int)
+func sendDigestHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {
 	c := appengine.NewContext(r)
-	account, err := getAccount(c, userId)
-	if err != nil {
-		return InternalError(err, "Could not look up account")
-	}
-
-	sent, err := sendDigestForAccount(account, c)
+	sent, err := sendDigestForAccount(state.Account, c)
 	if err != nil {
 		return InternalError(err, "Could not send digest")
 	}
 
 	if sent {
-		session.AddFlash("Digest emailed!")
+		state.AddFlash("Digest emailed!")
 	} else {
-		session.AddFlash("No digest was sent, it was empty or disabled.")
+		state.AddFlash("No digest was sent, it was empty or disabled.")
 	}
-	session.Save(r, w)
 	return RedirectToRoute("index")
 }
 
@@ -346,31 +327,19 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *AppErro
 	return RedirectToUrl(continueUrl)
 }
 
-func settingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId := session.Values[sessionConfig.UserIdKey].(int)
+func settingsHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {
 	c := appengine.NewContext(r)
-	account, err := getAccount(c, userId)
-	if err != nil {
-		// TODO: redirect to sign in again
-		return InternalError(err, "Could not look up account")
-	}
-
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
-
-	user, _, err := githubClient.Users.Get("")
+	user, _, err := state.GitHubClient.Users.Get("")
 	if err != nil {
 		return GitHubFetchError(err, "user")
 	}
 
-	repos, err := getRepos(c, githubClient, account, user)
+	repos, err := getRepos(c, state.GitHubClient, state.Account, user)
 	if err != nil {
 		return GitHubFetchError(err, "repositories")
 	}
 
-	emails, _, err := githubClient.Users.ListEmails(nil)
+	emails, _, err := state.GitHubClient.Users.ListEmails(nil)
 	if err != nil {
 		return GitHubFetchError(err, "emails")
 	}
@@ -378,18 +347,15 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	for i := range emails {
 		emailAddresses[i] = *emails[i].Email
 	}
-	accountEmailAddress, err := account.GetDigestEmailAddress(githubClient)
+	accountEmailAddress, err := state.Account.GetDigestEmailAddress(state.GitHubClient)
 	if err != nil {
 		return GitHubFetchError(err, "emails")
 	}
 
-	flashes := session.Flashes()
-	if len(flashes) > 0 {
-		session.Save(r, w)
-	}
+	flashes := state.Flashes()
 
 	var data = map[string]interface{}{
-		"Account":             account,
+		"Account":             state.Account,
 		"User":                user,
 		"Timezones":           timezones,
 		"Repos":               repos,
@@ -400,25 +366,16 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	return templates["settings"].Render(w, data)
 }
 
-func saveSettingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId := session.Values[sessionConfig.UserIdKey].(int)
+func saveSettingsHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {
 	c := appengine.NewContext(r)
-	account, err := getAccount(c, userId)
-	if err != nil {
-		// TODO: redirect to sign in again
-		return InternalError(err, "Could not look up account")
-	}
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
+	account := state.Account
 
-	user, _, err := githubClient.Users.Get("")
+	user, _, err := state.GitHubClient.Users.Get("")
 	if err != nil {
 		return GitHubFetchError(err, "user")
 	}
 
-	repos, err := getRepos(c, githubClient, account, user)
+	repos, err := getRepos(c, state.GitHubClient, account, user)
 	if err != nil {
 		return GitHubFetchError(err, "repos")
 	}
@@ -453,23 +410,16 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		return InternalError(err, "Could not save user")
 	}
 
-	session.AddFlash("Settings saved.")
-	session.Save(r, w)
+	state.AddFlash("Settings saved.")
 	return RedirectToRoute("settings")
 }
 
-func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId := session.Values[sessionConfig.UserIdKey].(int)
+func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {
 	c := appengine.NewContext(r)
-	account, err := getAccount(c, userId)
-	if err != nil {
-		// TODO: redirect to sign in again
-		return InternalError(err, "Could not look up account")
-	}
+	account := state.Account
 
 	timezoneName := r.FormValue("timezone_name")
-	_, err = time.LoadLocation(timezoneName)
+	_, err := time.LoadLocation(timezoneName)
 	if err != nil {
 		return BadRequest(err, "Malformed timezone_name value")
 	}
@@ -512,21 +462,10 @@ var cacheDigestForAccountFunc = delay.Func(
 		return nil
 	})
 
-func deleteAccountHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId := session.Values[sessionConfig.UserIdKey].(int)
+func deleteAccountHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {
 	c := appengine.NewContext(r)
-	account, err := getAccount(c, userId)
-	if err != nil {
-		// TODO: redirect to sign in again
-		return InternalError(err, "Could not look up account")
-	}
-
-	account.Delete(c)
-	session.Options.MaxAge = -1
-	session.Save(r, w)
-
-	// TODO: add a flash message saying that the account was deleted.
+	state.Account.Delete(c)
+	state.ClearSession()
 	return RedirectToRoute("index")
 }
 
