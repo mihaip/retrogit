@@ -88,7 +88,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
 	if !ok {
-		return templates["index-signed-out"].Render(w, nil)
+		data := map[string]interface{}{
+			"ContinueUrl": r.FormValue("continue_url"),
+		}
+		return templates["index-signed-out"].Render(w, data)
 	}
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)

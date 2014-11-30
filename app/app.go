@@ -99,7 +99,7 @@ func BadRequest(err error, message string) *AppError {
 	}
 }
 
-func RedirectToRoute(routeName string) *AppError {
+func RedirectToRoute(routeName string, queryParameters ...map[string]string) *AppError {
 	route := router.Get(routeName)
 	if route == nil {
 		return InternalError(
@@ -112,11 +112,18 @@ func RedirectToRoute(routeName string) *AppError {
 			errors.New("Could not get route URL"),
 			fmt.Sprintf("Could not get route URL for route '%s'", routeName))
 	}
+	if len(queryParameters) != 0 {
+		routeUrlQuery := routeUrl.Query()
+		for k, v := range queryParameters[0] {
+			routeUrlQuery.Set(k, v)
+		}
+		routeUrl.RawQuery = routeUrlQuery.Encode()
+	}
 	return RedirectToUrl(routeUrl.String())
 }
 
-func NotSignedIn() *AppError {
-	return RedirectToRoute("index")
+func NotSignedIn(r *http.Request) *AppError {
+	return RedirectToRoute("index", map[string]string{"continue_url": r.URL.String()})
 }
 
 type AppHandler func(http.ResponseWriter, *http.Request) *AppError
@@ -133,13 +140,13 @@ func (fn SignedInAppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
 	if !ok {
-		handleAppError(NotSignedIn(), w, r)
+		handleAppError(NotSignedIn(r), w, r)
 		return
 	}
 	c := appengine.NewContext(r)
 	account, err := getAccount(c, userId)
 	if account == nil || err != nil {
-		handleAppError(NotSignedIn(), w, r)
+		handleAppError(NotSignedIn(r), w, r)
 		return
 	}
 
