@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"appengine"
+	"appengine/datastore"
 	"appengine/delay"
 	"appengine/mail"
 	"appengine/urlfetch"
@@ -310,10 +311,14 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *AppErro
 		return GitHubFetchError(err, "user")
 	}
 
-	account := &Account{
-		GitHubUserId: *user.ID,
-		OAuthToken:   *token,
+	account, err := getAccount(c, *user.ID)
+	if err != nil && err != datastore.ErrNoSuchEntity {
+		return InternalError(err, "Could not look up user")
 	}
+	if account == nil {
+		account = &Account{GitHubUserId: *user.ID}
+	}
+	account.OAuthToken = *token
 	err = account.Put(c)
 	if err != nil {
 		return InternalError(err, "Could not save user")
