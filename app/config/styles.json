@@ -92,6 +92,10 @@
     "font-size": "9pt",
     "paragraph": {
       "margin": "0.5em 0"
+    },
+    "link": {
+      "text-decoration": "none",
+      "color": "#4183c4"
     }
   }
 }
