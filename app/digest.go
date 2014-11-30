@@ -27,7 +27,6 @@ type DigestCommit struct {
 	Message          string
 	PushDate         time.Time
 	CommitDate       time.Time
-	RepositoryCommit *github.RepositoryCommit
 }
 
 func safeFormattedDate(date string) string {
@@ -63,7 +62,6 @@ func newDigestCommit(commit *github.RepositoryCommit, repo *Repo, location *time
 		Message:          message,
 		PushDate:         commit.Commit.Committer.Date.In(location),
 		CommitDate:       commit.Commit.Author.Date.In(location),
-		RepositoryCommit: commit,
 	}
 }
 
@@ -294,4 +292,21 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 
 func (digest *Digest) Empty() bool {
 	return len(digest.IntervalDigests) == 0
+}
+
+func (digest *Digest) Redact() {
+	for _, intervalDigest := range digest.IntervalDigests {
+		for _, repoDigest := range intervalDigest.RepoDigests {
+			*repoDigest.Repo.HTMLURL = "https://redacted"
+			*repoDigest.Repo.FullName = "redacted/redacted"
+			for i := range repoDigest.Commits {
+				commit := &repoDigest.Commits[i]
+				commit.DisplaySHA = "0000000"
+				commit.URL = "https://redacted"
+				commit.Title = "Redacted"
+				commit.Message = "Redacted redacted redacted"
+			}
+		}
+
+	}
 }

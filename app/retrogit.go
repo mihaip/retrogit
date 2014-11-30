@@ -549,6 +549,7 @@ func digestAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	if err != nil {
 		return GitHubFetchError(err, "digest")
 	}
+	digest.Redact()
 	var data = map[string]interface{}{
 		"Digest": digest,
 	}
