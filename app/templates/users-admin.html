@@ -17,7 +17,7 @@
   <tbody>
     {{range .Users}}
       <tr>
-        <td><a href="{{routeUrl "digest-admin"}}?user_id={{.GitHubUserId}}">{{.Account.GitHubUserId}}</a></td>
+        <td><a href="{{routeUrl "digest-admin"}}?user_id={{.Account.GitHubUserId}}">{{.Account.GitHubUserId}}</a></td>
         <td>{{template "user" .User}}</td>
         <td>{{.EmailAddress}}</td>
         <td>{{.Account.Frequency}}</td>
