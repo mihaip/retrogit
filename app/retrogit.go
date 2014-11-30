@@ -481,28 +481,44 @@ func usersAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	if err != nil {
 		return InternalError(err, "Could not look up accounts")
 	}
-	users := make([]map[string]interface{}, len(accounts))
+
+	type AdminUserData struct {
+		Account      *Account
+		User         *github.User
+		EmailAddress string
+		Repos        *Repos
+		ReposError   error
+	}
+	ch := make(chan *AdminUserData)
 	for i := range accounts {
-		account := &accounts[i]
-		oauthTransport := githubOAuthTransport(c)
-		oauthTransport.Token = &account.OAuthToken
-		githubClient := github.NewClient(oauthTransport.Client())
+		go func(account *Account) {
+			oauthTransport := githubOAuthTransport(c)
+			oauthTransport.Token = &account.OAuthToken
+			githubClient := github.NewClient(oauthTransport.Client())
 
-		user, _, err := githubClient.Users.Get("")
+			user, _, err := githubClient.Users.Get("")
 
-		emailAddress, err := account.GetDigestEmailAddress(githubClient)
-		if err != nil {
-			emailAddress = err.Error()
-		}
+			emailAddress, err := account.GetDigestEmailAddress(githubClient)
+			if err != nil {
+				emailAddress = err.Error()
+			}
 
-		repos, reposErr := getRepos(c, githubClient, account, user)
+			repos, reposErr := getRepos(c, githubClient, account, user)
+			ch <- &AdminUserData{
+				Account:      account,
+				User:         user,
+				EmailAddress: emailAddress,
+				Repos:        repos,
+				ReposError:   reposErr,
+			}
+		}(&accounts[i])
+	}
 
-		users[i] = map[string]interface{}{
-			"Account":      account,
-			"User":         user,
-			"EmailAddress": emailAddress,
-			"Repos":        repos,
-			"ReposError":   reposErr,
+	users := make([]*AdminUserData, 0)
+	for _ = range accounts {
+		select {
+		case r := <-ch:
+			users = append(users, r)
 		}
 	}
 	var data = map[string]interface{}{
