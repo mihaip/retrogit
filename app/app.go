@@ -204,7 +204,10 @@ type Template struct {
 	*template.Template
 }
 
-func (t *Template) Render(w io.Writer, data interface{}) *AppError {
+func (t *Template) Render(w io.Writer, data map[string]interface{}, state ...*AppSignedInState) *AppError {
+	if len(state) > 0 {
+		data["Flashes"] = state[0].Flashes()
+	}
 	err := t.Execute(w, data)
 	if err != nil {
 		return &AppError{

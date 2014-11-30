@@ -17,6 +17,10 @@
   <div class="body">
     <h1>{{template "title" .}}</h1>
 
+    {{range .Flashes}}
+      {{template "flash" .}}
+    {{end}}
+
     {{template "body" .}}
   </div>
 </body>

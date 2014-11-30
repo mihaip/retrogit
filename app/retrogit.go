@@ -144,17 +144,18 @@ func indexHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		"RepositoryCount": repositoryCount,
 		"EmailAddress":    emailAddress,
 	}
-	flashes := session.Flashes()
-	if len(flashes) > 0 {
-		session.Save(r, w)
-	}
 	var data = map[string]interface{}{
 		"User":            user,
 		"SettingsSummary": settingsSummary,
 		"DetectTimezone":  !account.HasTimezoneSet,
-		"Flashes":         flashes,
 	}
-	return templates["index"].Render(w, data)
+	return templates["index"].Render(w, data, &AppSignedInState{
+		Account:        account,
+		GitHubClient:   githubClient,
+		session:        session,
+		responseWriter: w,
+		request:        r,
+	})
 }
 
 func signInHandler(w http.ResponseWriter, r *http.Request) *AppError {
@@ -196,7 +197,7 @@ func viewDigestHandler(w http.ResponseWriter, r *http.Request, state *AppSignedI
 	var data = map[string]interface{}{
 		"Digest": digest,
 	}
-	return templates["digest-page"].Render(w, data)
+	return templates["digest-page"].Render(w, data, state)
 }
 
 func sendDigestHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {
@@ -360,8 +361,6 @@ func settingsHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInS
 		return GitHubFetchError(err, "emails")
 	}
 
-	flashes := state.Flashes()
-
 	var data = map[string]interface{}{
 		"Account":             state.Account,
 		"User":                user,
@@ -369,9 +368,8 @@ func settingsHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInS
 		"Repos":               repos,
 		"EmailAddresses":      emailAddresses,
 		"AccountEmailAddress": accountEmailAddress,
-		"Flashes":             flashes,
 	}
-	return templates["settings"].Render(w, data)
+	return templates["settings"].Render(w, data, state)
 }
 
 func saveSettingsHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {

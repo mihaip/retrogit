@@ -2,10 +2,6 @@
 
 {{define "body"}}
 
-{{range .Flashes}}
-  {{template "flash" .}}
-{{end}}
-
 <div class="blurb">
   You're signed in as
   {{template "user" .User}}
