@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -329,7 +328,13 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *AppErro
 	session.Values[sessionConfig.UserIdKey] = user.ID
 	session.Save(r, w)
 	continueUrl := r.FormValue("continue_url")
-	if continueUrl == "" || !strings.HasPrefix(continueUrl, "/") {
+	if continueUrl != "" {
+		continueUrlParsed, err := url.Parse(continueUrl)
+		if err != nil || continueUrlParsed.Host != r.URL.Host {
+			continueUrl = ""
+		}
+	}
+	if continueUrl == "" {
 		indexUrl, _ := router.Get("index").URL()
 		continueUrl = indexUrl.String()
 	}
