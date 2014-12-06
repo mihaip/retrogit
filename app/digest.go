@@ -21,12 +21,12 @@ const (
 )
 
 type DigestCommit struct {
-	DisplaySHA       string
-	URL              string
-	Title            string
-	Message          string
-	PushDate         time.Time
-	CommitDate       time.Time
+	DisplaySHA string
+	URL        string
+	Title      string
+	Message    string
+	PushDate   time.Time
+	CommitDate time.Time
 }
 
 func safeFormattedDate(date string) string {
@@ -56,12 +56,12 @@ func newDigestCommit(commit *github.RepositoryCommit, repo *Repo, location *time
 		message = messagePieces[1]
 	}
 	return DigestCommit{
-		DisplaySHA:       (*commit.SHA)[:7],
-		URL:              fmt.Sprintf("https://github.com/%s/commit/%s", *repo.FullName, *commit.SHA),
-		Title:            title,
-		Message:          message,
-		PushDate:         commit.Commit.Committer.Date.In(location),
-		CommitDate:       commit.Commit.Author.Date.In(location),
+		DisplaySHA: (*commit.SHA)[:7],
+		URL:        fmt.Sprintf("https://github.com/%s/commit/%s", *repo.FullName, *commit.SHA),
+		Title:      title,
+		Message:    message,
+		PushDate:   commit.Commit.Committer.Date.In(location),
+		CommitDate: commit.Commit.Author.Date.In(location),
 	}
 }
 
