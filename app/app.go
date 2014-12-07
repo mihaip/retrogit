@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"appengine"
+	"appengine/mail"
 
 	"github.com/google/go-github/github"
 	"github.com/gorilla/sessions"
@@ -208,10 +209,40 @@ func handleAppError(e *AppError, w http.ResponseWriter, r *http.Request) {
 	}
 	if e.Type != AppErrorTypeBadInput {
 		c.Errorf("%v", e.Error)
+		sendAppErrorMail(e, r)
 	} else {
 		c.Infof("%v", e.Error)
 	}
 	http.Error(w, e.Message, e.Code)
+}
+
+func sendAppErrorMail(e *AppError, r *http.Request) {
+	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
+	userId, _ := session.Values[sessionConfig.UserIdKey].(int)
+
+	errorMessage := &mail.Message{
+		Sender:  "RetroGit Admin <digests@retrogit.com>",
+		To:      []string{"mihai.parparita@gmail.com"},
+		Subject: fmt.Sprintf("RetroGit Internal Error on %s", r.URL),
+		Body: fmt.Sprintf(`Request URL: %s
+HTTP status code: %d
+Error type: %d
+User ID: %d
+
+Message: %s
+Error: %s`,
+			r.URL,
+			e.Code,
+			e.Type,
+			userId,
+			e.Message,
+			e.Error),
+	}
+	c := appengine.NewContext(r)
+	err := mail.Send(c, errorMessage)
+	if err != nil {
+		c.Errorf("Error %s sending error email.", err.Error())
+	}
 }
 
 type Template struct {
