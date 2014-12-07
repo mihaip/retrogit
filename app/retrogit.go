@@ -248,6 +248,9 @@ var sendDigestForAccountFunc = delay.Func(
 		sent, err := sendDigestForAccount(account, c)
 		if err != nil {
 			c.Errorf("  Error: %s", err.Error())
+			if !appengine.IsDevAppServer() {
+				sendDigestErrorMail(err, c, githubUserId)
+			}
 		} else if sent {
 			c.Infof("  Sent!")
 		} else {
@@ -255,6 +258,19 @@ var sendDigestForAccountFunc = delay.Func(
 		}
 		return err
 	})
+
+func sendDigestErrorMail(e error, c appengine.Context, gitHubUserId int) {
+	errorMessage := &mail.Message{
+		Sender:  "RetroGit Admin <digests@retrogit.com>",
+		To:      []string{"mihai.parparita@gmail.com"},
+		Subject: fmt.Sprintf("RetroGit Digest Send Error for %d", gitHubUserId),
+		Body:    fmt.Sprintf("Error: %s", e),
+	}
+	err := mail.Send(c, errorMessage)
+	if err != nil {
+		c.Errorf("Error %s sending error email.", err.Error())
+	}
+}
 
 func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 	oauthTransport := githubOAuthTransport(c)
