@@ -126,9 +126,16 @@ func NotSignedIn(r *http.Request) *AppError {
 	return RedirectToRoute("index", map[string]string{"continue_url": r.URL.String()})
 }
 
+func Panic(panicData interface{}) *AppError {
+	return InternalError(
+		errors.New(fmt.Sprintf("Panic: %+v\n\n%s", panicData, stack(3))),
+		"Panic")
+}
+
 type AppHandler func(http.ResponseWriter, *http.Request) *AppError
 
 func (fn AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer panicRecovery(w, r)
 	if e := fn(w, r); e != nil {
 		handleAppError(e, w, r)
 	}
@@ -137,6 +144,7 @@ func (fn AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type SignedInAppHandler func(http.ResponseWriter, *http.Request, *AppSignedInState) *AppError
 
 func (fn SignedInAppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer panicRecovery(w, r)
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
 	if !ok {
@@ -164,6 +172,12 @@ func (fn SignedInAppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if e := fn(w, r, state); e != nil {
 		handleAppError(e, w, r)
+	}
+}
+
+func panicRecovery(w http.ResponseWriter, r *http.Request) {
+	if panicData := recover(); panicData != nil {
+		handleAppError(Panic(panicData), w, r)
 	}
 }
 
