@@ -1,0 +1,23 @@
+{{define "title"}} Internal Error {{end}}
+
+{{define "body"}}
+
+{{if .ShowDetails}}
+
+<p>
+<b>HTTP status code:</b> {{.Error.Code}}<br>
+<b>Error type:</b> {{.Error.Type}}<br>
+</p>
+
+<p>
+<b>Message:</b> {{.Error.Message}}<br>
+<b>Error:</b> <pre>{{.Error.Error}}</pre>
+</p>
+
+{{else}}
+  An internal error occured. The developer has been notified. Hopefully it'll
+  be fixed soon. You can also try checking the
+  <a href="https://github.com/mihaip/retrogit/issues">current issues list</a>.
+{{end}}
+
+{{end}}

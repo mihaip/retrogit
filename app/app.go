@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -209,7 +208,19 @@ func handleAppError(e *AppError, w http.ResponseWriter, r *http.Request) {
 	}
 	if e.Type != AppErrorTypeBadInput {
 		c.Errorf("%v", e.Error)
-		sendAppErrorMail(e, r)
+		if !appengine.IsDevAppServer() {
+			sendAppErrorMail(e, r)
+		}
+		var data = map[string]interface{}{
+			"ShowDetails": appengine.IsDevAppServer(),
+			"Error":       e,
+		}
+		w.WriteHeader(e.Code)
+		templateError := templates["internal-error"].Render(w, data)
+		if templateError != nil {
+			c.Errorf("Error %s rendering error template.", templateError.Error.Error())
+		}
+		return
 	} else {
 		c.Infof("%v", e.Error)
 	}
@@ -249,10 +260,11 @@ type Template struct {
 	*template.Template
 }
 
-func (t *Template) Render(w io.Writer, data map[string]interface{}, state ...*AppSignedInState) *AppError {
+func (t *Template) Render(w http.ResponseWriter, data map[string]interface{}, state ...*AppSignedInState) *AppError {
 	if len(state) > 0 {
 		data["Flashes"] = state[0].Flashes()
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err := t.Execute(w, data)
 	if err != nil {
 		return &AppError{
