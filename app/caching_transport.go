@@ -70,7 +70,8 @@ func (t *CachingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 			Expiration: expiration,
 		})
 	if err != nil {
-		t.Context.Errorf("Error setting cached response: %v", err)
+		t.Context.Errorf("Error setting cached response for %s (cache key %s, %d bytes to cache): %v",
+			req.URL, cacheKey, len(respBytes), err)
 	}
 	return resp, nil
 }
