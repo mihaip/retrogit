@@ -3,6 +3,9 @@ package retrogit
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -24,13 +27,19 @@ func (t *CachingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	if req.Method != "GET" && req.Method != "HEAD" {
 		return t.Transport.RoundTrip(req)
 	}
-	cacheKey := "CachingTransport:" + req.URL.String() + "#"
+	// The Go App Engine runtime has a 250 byte limit for memcache keys, so we
+	// need to hash the URL to make sure we stay under it.
+	cacheHash := md5.New()
+	io.WriteString(cacheHash, req.URL.String())
 	authorizationHeaders, ok := req.Header["Authorization"]
 	if ok {
-		cacheKey += strings.Join(authorizationHeaders, "#")
+		for i := range authorizationHeaders {
+			io.WriteString(cacheHash, authorizationHeaders[i])
+		}
 	} else {
-		cacheKey += "Unauthorized"
+		io.WriteString(cacheHash, "Unauthorized")
 	}
+	cacheKey := fmt.Sprintf("CachingTransport:%x", cacheHash.Sum(nil))
 
 	cachedRespItem, err := memcache.Get(t.Context, cacheKey)
 	if err != nil && err != memcache.ErrCacheMiss {
