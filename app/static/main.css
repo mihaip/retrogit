@@ -130,6 +130,24 @@ input[type="submit"].inline.destructive {
   opacity: 1;
 }
 
+.footer {
+  padding: 10px;
+  max-width: 1102px;
+  margin: 0 auto;
+  position: relative;
+  color: #999;
+}
+
+.footer .contents {
+  border-top: dashed 1px #ccc;
+  padding-top: 10px;
+  text-align: right;
+}
+
+.footer a {
+  color: #779dc2;
+}
+
 #sign-in-form {
   text-align: center;
 }
