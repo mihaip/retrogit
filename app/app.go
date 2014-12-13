@@ -136,6 +136,7 @@ type AppHandler func(http.ResponseWriter, *http.Request) *AppError
 
 func (fn AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer panicRecovery(w, r)
+	makeUncacheable(w)
 	if e := fn(w, r); e != nil {
 		handleAppError(e, w, r)
 	}
@@ -145,6 +146,7 @@ type SignedInAppHandler func(http.ResponseWriter, *http.Request, *AppSignedInSta
 
 func (fn SignedInAppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer panicRecovery(w, r)
+	makeUncacheable(w)
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
 	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
 	if !ok {
@@ -179,6 +181,12 @@ func panicRecovery(w http.ResponseWriter, r *http.Request) {
 	if panicData := recover(); panicData != nil {
 		handleAppError(Panic(panicData), w, r)
 	}
+}
+
+func makeUncacheable(w http.ResponseWriter) {
+	w.Header().Set(
+		"Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
+	w.Header().Set("Expires", "0")
 }
 
 func handleAppError(e *AppError, w http.ResponseWriter, r *http.Request) {
