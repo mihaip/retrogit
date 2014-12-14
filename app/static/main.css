@@ -67,6 +67,7 @@ a:hover {
 
 .blurb .avatar {
   vertical-align: text-bottom;
+  padding-right: 3px;
 }
 
 .action-button {
