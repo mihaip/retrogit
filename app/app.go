@@ -308,6 +308,12 @@ func loadTemplates() (templates map[string]*Template) {
 			}
 			return baseUrl + url.String(), nil
 		},
+		"absoluteUrlForPath": func(path string) string {
+			if appengine.IsDevAppServer() {
+				return "http://localhost:8080" + path
+			}
+			return "https://www.retrogit.com" + path
+		},
 		"style": func(names ...string) (result template.CSS) {
 			for _, name := range names {
 				result += styles[name]
