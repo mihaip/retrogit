@@ -21,12 +21,6 @@ a:hover {
   background: #eee;
 }
 
-@media (max-width: 600px) {
-  .header {
-    height: 138px;
-  }
-}
-
 .header:after {
   content: "";
   position: absolute;
@@ -45,6 +39,16 @@ a:hover {
   top: 10px;
   left: 50%;
   margin-left: -555px;
+}
+
+@media (max-width: 600px) {
+  .header {
+    height: 104px;
+  }
+
+  .header img {
+    top: -24px;
+  }
 }
 
 .body {
@@ -151,6 +155,7 @@ input[type="submit"].inline.destructive {
 
 #sign-in-form {
   text-align: center;
+  white-space: nowrap;
 }
 
 #sign-in-form .octicon-mark-github {
@@ -159,11 +164,12 @@ input[type="submit"].inline.destructive {
   color: #76201b;
   z-index: 1;
   position: relative;
+  left: 12px;
 }
 
 #sign-in-form input[type="submit"] {
   padding: 8px 5px 5px 43px;
-  margin-left: -44px;
+  margin-left: -32px;
 }
 
 #sign-in-form input[type="submit"]:before {
@@ -198,11 +204,28 @@ input[type="submit"].inline.destructive {
   display: block;
 }
 
+@media (max-width: 450px) {
+  #sign-in-form .octicon-mark-github {
+    font-size: 30px;
+    left: 10px;
+  }
+  #sign-in-form .action-button {
+    font-size: 16pt;
+  }
+}
+
 #primary-actions {
   margin: 1em 0;
   text-align: center;
   font-size: 16px;
   color: #999;
+}
+
+@media (max-width: 450px) {
+  #primary-actions form.inline {
+    display: block;
+    margin: 5px 0;
+  }
 }
 
 .setting {
