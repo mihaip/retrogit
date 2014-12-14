@@ -41,6 +41,14 @@ a:hover {
   margin-left: -555px;
 }
 
+.card-background {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  margin-left: -555px;
+  z-index: -1;
+}
+
 @media (max-width: 600px) {
   .header {
     height: 104px;
@@ -48,6 +56,10 @@ a:hover {
 
   .header img {
     top: -24px;
+  }
+
+  .card-background {
+    top: -10px;
   }
 }
 
@@ -61,6 +73,10 @@ a:hover {
 .body h1 {
   margin-top: 0;
   color: #756344;
+}
+
+.body h1:empty {
+  display: none;
 }
 
 .blurb {
@@ -153,9 +169,37 @@ input[type="submit"].inline.destructive {
   color: #779dc2;
 }
 
+#pitch {
+  margin: 0 15px;
+  padding-right: 230px;
+  position: relative;
+}
+
+#pitch #screenshot {
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 206px;
+  height: 260px;
+  border: dashed 1px #d7cab0;
+  background: #fff;
+  padding: 5px;
+}
+
+#pitch h2 {
+  color: #444;
+  margin: 10px 0;
+}
+
+#pitch p.small {
+  font-size: 13px;
+}
+
 #sign-in-form {
   text-align: center;
   white-space: nowrap;
+  padding-right: 230px;
 }
 
 #sign-in-form .octicon-mark-github {
@@ -205,6 +249,16 @@ input[type="submit"].inline.destructive {
 }
 
 @media (max-width: 450px) {
+  #pitch {
+    padding-right: 0;
+  }
+  #pitch #screenshot {
+    position: static;
+    margin: 0 auto;
+  }
+  #sign-in-form {
+    padding-right: 0;
+  }
   #sign-in-form .octicon-mark-github {
     font-size: 30px;
     left: 10px;

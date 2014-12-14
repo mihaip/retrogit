@@ -2,6 +2,22 @@
 
 {{define "body"}}
 
+<img class="card-background" src="/static/images/card-background.jpg" srcset="/static/images/card-background.jpg 1x, /static/images/card-background@2x.jpg 2x" width="1111" height="339" alt="">
+
+<div id="pitch" class="blurb">
+  <h2>See your GitHub activity on this exact day in history.</h2>
+
+  <p>RetroGit emails you a daily or weekly digest with your GitHub commits from all the previous years during which you checked in code.</p>
+
+  <a href="/static/images/screenshot.png" id="screenshot">
+    <img src="/static/images/screenshot-thumbnail.png" srcset="/static/images/screenshot-thumbnail.png 1x, /static/images/screenshot-thumbnail@2x.png 2x" width="206" height="260" alt="RetroGit Screenshot">
+  </a>
+
+  <p>Use it as a nostalgia trip, or to remind you of TODOs that you never quite got around to cleaning up. Think of it as <a href="http://timehop.com/">Timehop</a> for your codebase.</p>
+
+  <p class="small">If you have any concerns about how RetroGit uses GitHub data, please see the <a href="{{routeUrl "faq"}}">FAQ</a>.</p>
+</div>
+
 <form id="sign-in-form" method="POST" action="{{routeUrl "sign-in"}}">
   <span class="mega-octicon octicon-mark-github"></span>
   <input type="hidden" name="continue_url" value="{{.ContinueUrl}}">
