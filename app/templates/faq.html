@@ -1,0 +1,60 @@
+{{define "title"}} FAQ {{end}}
+
+{{define "body"}}
+
+<h2>Why do you need such broad access to my GitHub account?</h2>
+
+<div class="blurb">
+  RetroGit requests access for a couple of kinds of data from your GitHub account:
+  <ul>
+    <li><b>Personal user data:</b> Needed in order to determine which email address to send your digest to (I did not want to build my own email address validation infrastructure).</li>
+    <li><b>Repositories:</b> Needed to get at historical commits used to generate your digest. The authentication <a href="https://developer.github.com/v3/oauth/#scopes">scopes</a> that GitHub's API offers are quite coarse-grained, so there is no narrower option. This means that RetroGit also has access to the read-write contents of your source files, even though it does not need (or use) it. The one mitigating option is to only request this level of access for public repositories — this can be done in RetroGit by unchecking the "Include private repositories" checkbox when signing in.</li>
+</div>
+
+<h2>How much data can you see about my account?</h2>
+
+<div class="blurb">
+  RetroGit has access to the following data about your GitHub account and repositories:
+
+  <ul>
+    <li><b>Email addresses</b></li>
+    <li><b>Commit history</b></li>
+    <li>Source code</li>
+    <li>Issues</li>
+    <li>Pull requests</li>
+    <li>Wikis</li>
+    <li>Settings</li>
+    <li>Webhooks</li>
+    <li>Deploy keys</li>
+  </ul>
+
+  However it only uses the data in <b>bold</b>, everything else is provided as a side effect of the <a href="https://developer.github.com/v3/oauth/#scopes">scope</a> that it uses with the GitHub API.
+</div>
+
+<h2>What is is stored in your servers?</h2>
+
+<div class="blurb">
+  RetroGit does <b>not</b> persist any commit messages or source code from your repositories on its servers (GitHub API responses may be cached in memory for a short period). Digests are generated dynamically when they need to be sent out. What ends up being stored is (see the <a href="https://github.com/mihaip/retrogit/blob/master/app/account.go"><code>Account</code></a> struct for details):
+
+  <ul>
+    <li>OAuth token enabling RetroGit to query data for your account.</li>
+    <li>Which email address to receive your digests at.</li>
+    <li>Timezone, digest frequency and other settings.</li>
+  </ul>
+
+  There is also a <a href="https://github.com/mihaip/retrogit/blob/master/app/repos.go">per-user map</a> of the timestamp of the oldest commit for each repository, since this is expensive to compute.
+</div>
+
+<h2>Can I run my own instance?</h2>
+
+<div class="blurb">
+  RetroGit's <a href="https://github.com/mihaip/retrogit">source</a> is available and it runs on the <a href="https://cloud.google.com/appengine/docs/go/">App Engine Go Runtime</a>, so you can easily start your own instance. It is not very resource intensive -- single user accounts should definitely fit within the free daily quota.
+</div>
+
+<h2>Can I delete my account?</h2>
+
+<div class="blurb">
+  Yes, this can be done via the <a href="{{routeUrl "settings"}}">settings</a> page. You can also revoke RetroGit's access to your account via the GitHub <a href="https://github.com/settings/applications">authorized applications</a> page.
+</div>
+
+{{end}}

@@ -41,6 +41,7 @@ func init() {
 
 	router = mux.NewRouter()
 	router.Handle("/", AppHandler(indexHandler)).Name("index")
+	router.Handle("/faq", AppHandler(faqHandler)).Name("faq")
 
 	router.Handle("/session/sign-in", AppHandler(signInHandler)).Name("sign-in").Methods("POST")
 	router.Handle("/session/sign-out", AppHandler(signOutHandler)).Name("sign-out").Methods("POST")
@@ -155,6 +156,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		responseWriter: w,
 		request:        r,
 	})
+}
+
+func faqHandler(w http.ResponseWriter, r *http.Request) *AppError {
+	return templates["faq"].Render(w, nil)
 }
 
 func signInHandler(w http.ResponseWriter, r *http.Request) *AppError {
