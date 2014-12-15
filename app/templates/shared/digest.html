@@ -3,16 +3,15 @@
 <div style="{{style "digest"}}">
 
 <p style="{{style "proportional" "intro-paragraph"}}">
-  GitHub activity time machine for
-  <a href="https://github.com/{{.User.Login}}"
-     title="{{.User.Name}}"
-     style="{{style "link" "intro-paragraph.user-link"}}">
-    <img src="{{.User.AvatarURL}}"
+  Here {{if eq .CommitCount 1}}is{{else}}are{{end}} your
+  (<a href="https://github.com/{{.User.Login}}"
+     style="{{style "link" "intro-paragraph.user-link"}}"
+     title="{{.User.Name}}"><img src="{{.User.AvatarURL}}"
          width="20"
          height="20"
          border="0"
-         style="{{style "intro-paragraph.user-avatar"}}">{{.User.Login}}
-  </a>.
+         style="{{style "intro-paragraph.user-avatar"}}">{{.User.Login}}</a>'s)
+    {{.CommitCount}} commits from years past.
 </p>
 
 {{range .IntervalDigests }}

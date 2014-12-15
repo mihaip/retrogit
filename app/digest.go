@@ -167,6 +167,7 @@ type Digest struct {
 	User             *github.User
 	TimezoneLocation *time.Location
 	IntervalDigests  []*IntervalDigest
+	CommitCount      int
 	RepoErrors       map[string]error
 }
 
@@ -218,6 +219,7 @@ func newDigest(c appengine.Context, githubClient *github.Client, account *Accoun
 		User:             user,
 		TimezoneLocation: account.TimezoneLocation,
 		IntervalDigests:  intervalDigests,
+		CommitCount:      0,
 		RepoErrors:       make(map[string]error),
 	}
 
@@ -283,6 +285,7 @@ func (digest *Digest) fetch(githubClient *github.Client) {
 			}
 			if len(r.repoDigest.Commits) > 0 {
 				r.intervalDigest.RepoDigests = append(r.intervalDigest.RepoDigests, r.repoDigest)
+				digest.CommitCount += len(r.repoDigest.Commits)
 			}
 		}
 	}
