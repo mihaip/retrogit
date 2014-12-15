@@ -541,14 +541,18 @@ func usersAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	}
 
 	users := make([]*AdminUserData, 0)
+	totalRepos := 0
 	for _ = range accounts {
 		select {
 		case r := <-ch:
 			users = append(users, r)
+			totalRepos += len(r.Repos.AllRepos)
 		}
 	}
 	var data = map[string]interface{}{
-		"Users": users,
+		"Users":      users,
+		"TotalUsers": len(users),
+		"TotalRepos": totalRepos,
 	}
 	return templates["users-admin"].Render(w, data)
 }
