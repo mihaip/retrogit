@@ -87,6 +87,10 @@
       }
     }
   },
+  "errors": {
+    "background": "#fdd",
+    "padding": "10px"
+  },
   "email-footer": {
     "color": "#999",
     "font-size": "9pt",

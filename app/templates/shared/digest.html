@@ -54,6 +54,15 @@
 
 {{end}}
 
+{{if .RepoErrors}}
+  <div style="{{style "errors"}}">
+    Errors were encountered for the following repositories:
+    {{range $repoFullName, $error := .RepoErrors}}
+      <a href="https://github.com/{{$repoFullName}}">{{$repoFullName}}</a>
+    {{end}}
+  </div>
+{{end}}
+
 </div>
 
 {{end}}

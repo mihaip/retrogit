@@ -167,6 +167,7 @@ type Digest struct {
 	User             *github.User
 	TimezoneLocation *time.Location
 	IntervalDigests  []*IntervalDigest
+	RepoErrors       map[string]error
 }
 
 func newDigest(c appengine.Context, githubClient *github.Client, account *Account) (*Digest, error) {
@@ -217,15 +218,20 @@ func newDigest(c appengine.Context, githubClient *github.Client, account *Accoun
 		User:             user,
 		TimezoneLocation: account.TimezoneLocation,
 		IntervalDigests:  intervalDigests,
+		RepoErrors:       make(map[string]error),
 	}
 
-	err = digest.fetch(githubClient)
-	return digest, err
+	digest.fetch(githubClient)
+	for repoFullName, err := range digest.RepoErrors {
+		c.Errorf("Error fetching %s: %s", repoFullName, err.Error())
+	}
+	return digest, nil
 }
 
-func (digest *Digest) fetch(githubClient *github.Client) error {
+func (digest *Digest) fetch(githubClient *github.Client) {
 	type RepoDigestResponse struct {
 		intervalDigest *IntervalDigest
+		repo           *Repo
 		repoDigest     *RepoDigest
 		err            error
 	}
@@ -250,7 +256,7 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 							Until:  intervalDigest.EndTime.UTC(),
 						})
 					if err != nil {
-						ch <- &RepoDigestResponse{nil, nil, err}
+						ch <- &RepoDigestResponse{intervalDigest, repo, nil, err}
 						return
 					}
 					commits = append(commits, pageCommits...)
@@ -263,7 +269,7 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 				for i := range commits {
 					digestCommits[len(commits)-i-1] = newDigestCommit(&commits[i], repo, digest.TimezoneLocation)
 				}
-				ch <- &RepoDigestResponse{intervalDigest, &RepoDigest{repo, digestCommits}, nil}
+				ch <- &RepoDigestResponse{intervalDigest, repo, &RepoDigest{repo, digestCommits}, nil}
 			}(intervalDigest, repo)
 			fetchCount++
 		}
@@ -272,7 +278,8 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 		select {
 		case r := <-ch:
 			if r.err != nil {
-				return r.err
+				digest.RepoErrors[*r.repo.FullName] = r.err
+				continue
 			}
 			if len(r.repoDigest.Commits) > 0 {
 				r.intervalDigest.RepoDigests = append(r.intervalDigest.RepoDigests, r.repoDigest)
@@ -287,7 +294,6 @@ func (digest *Digest) fetch(githubClient *github.Client) error {
 		}
 	}
 	digest.IntervalDigests = nonEmptyIntervalDigests
-	return nil
 }
 
 func (digest *Digest) Empty() bool {
