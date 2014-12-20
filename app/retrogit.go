@@ -546,7 +546,9 @@ func usersAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		select {
 		case r := <-ch:
 			users = append(users, r)
-			totalRepos += len(r.Repos.AllRepos)
+			if r.Repos != nil {
+				totalRepos += len(r.Repos.AllRepos)
+			}
 		}
 	}
 	var data = map[string]interface{}{

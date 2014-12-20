@@ -22,7 +22,13 @@
     {{range .Users}}
       <tr>
         <td><a href="{{routeUrl "digest-admin"}}?user_id={{.Account.GitHubUserId}}">{{.Account.GitHubUserId}}</a></td>
-        <td>{{template "user" .User}}</td>
+        <td>
+          {{if .User}}
+            {{template "user" .User}}
+          {{else}}
+            User could not be looked up, credentials have most likely been revoked.
+          {{end}}
+        </td>
         <td>{{.EmailAddress}}</td>
         <td>{{.Account.Frequency}}</td>
         <td>
