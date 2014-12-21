@@ -369,6 +369,13 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *AppErro
 		account = &Account{GitHubUserId: *user.ID}
 	}
 	account.OAuthToken = *token
+	// Persist the default email address now, both to avoid additional lookups
+	// later and to have a way to contact the user if they ever revoke their
+	// OAuth token.
+	emailAddress, err := account.GetDigestEmailAddress(githubClient)
+	if err == nil && len(emailAddress) > 0 {
+		account.DigestEmailAddress = emailAddress
+	}
 	err = account.Put(c)
 	if err != nil {
 		return InternalError(err, "Could not save user")
