@@ -31,8 +31,8 @@ var computeVintageFunc *delay.Function
 func computeVintage(c appengine.Context, userId int, userLogin string, repoId int, repoOwnerLogin string, repoName string) error {
 	account, err := getAccount(c, userId)
 	if err != nil {
-		c.Errorf("Could not load account %d: %s", userId, err.Error())
-		return err
+		c.Errorf("Could not load account %d: %s. Presumed deleted, aborting computing vintage for %s/%s", userId, err.Error(), repoOwnerLogin, repoName)
+		return nil
 	}
 
 	oauthTransport := githubOAuthTransport(c)
