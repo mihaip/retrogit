@@ -226,20 +226,20 @@ input[type="submit"].inline.destructive {
 }
 
 #sign-in-form input[type="checkbox"] {
-  visibility: hidden;
+  display: none;
 }
 
-#sign-in-form input[type="checkbox"]:before {
+#sign-in-form input[type="checkbox"] + label:before {
   color: #a02b24;
-  visibility: visible;
   content: "\2610";
   font-size: 18px;
-  position: relative;
-  top: -6px;
-  left: 6px;
 }
 
-#sign-in-form input[type="checkbox"]:checked:before {
+#sign-in-form input[type="checkbox"] + label:active {
+  opacity: 0.4;
+}
+
+#sign-in-form input[type="checkbox"]:checked + label:before {
   content: "\2611";
 }
 
