@@ -9,6 +9,9 @@ handlers:
 - url: /favicon.ico
   static_files: static/favicon.ico
   upload: static/favicon.ico
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
 - url: /digest/cron
   script: _go_app
   login: admin
