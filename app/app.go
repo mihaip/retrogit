@@ -334,9 +334,9 @@ func loadTemplates() (templates map[string]*Template) {
 		templateName := filepath.Base(templateFileName)
 		templateName = strings.TrimSuffix(templateName, filepath.Ext(templateName))
 		fileNames := make([]string, 0, len(sharedFileNames)+2)
-		// The base template has to come first, except for the email template, which
-		// doesn't use it
-		if templateName != "digest-email" {
+		// The base template has to come first, except for email ones, which
+		// don't use it.
+		if !strings.HasSuffix(templateName, "-email") {
 			fileNames = append(fileNames, "templates/base/page.html")
 		}
 		fileNames = append(fileNames, templateFileName)

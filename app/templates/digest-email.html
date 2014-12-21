@@ -1,22 +1,3 @@
 {{template "digest" .Digest}}
 
-<hr noshade size="1" color="#ccc">
-
-<div style="{{style "proportional" "email-footer"}}">
-
-  <p style="{{style "email-footer.paragraph"}}">
-    You are receiving this email because you set up a
-    <a href="{{absoluteRouteUrl "index"}}" style="{{style "email-footer.link"}}">RetroGit</a> account.
-  </p>
-
-  <p style="{{style "email-footer.paragraph"}}">
-   <a href="{{absoluteRouteUrl "settings"}}" style="{{style "email-footer.link"}}">Update your email preferences</a>
-   | <a href="{{absoluteRouteUrl "view-digest"}}" style="{{style "email-footer.link"}}">View digest in browser</a>
-  </p>
-
-  <p style="{{style "email-footer.paragraph"}}">
-    RetroGit is a project by
-    <a href="http://persistent.info" style="{{style "email-footer.link"}}">Mihai Parparita</a>.
-  </p>
-
-</div>
+{{template "email-footer"}}

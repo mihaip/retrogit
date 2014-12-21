@@ -284,6 +284,15 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 
 	emailAddress, err := account.GetDigestEmailAddress(githubClient)
 	if err != nil {
+		if gitHubError, ok := (err).(*github.ErrorResponse); ok {
+			gitHubStatus := gitHubError.Response.StatusCode
+			if gitHubStatus == http.StatusUnauthorized ||
+				gitHubStatus == http.StatusForbidden {
+				c.Errorf("  GitHub auth error while getting email adddress, skipping: %s", err.Error())
+				return false, nil
+			}
+		}
+
 		return false, err
 	}
 	if emailAddress == "disabled" {
@@ -292,6 +301,26 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 
 	digest, err := newDigest(c, githubClient, account)
 	if err != nil {
+		if gitHubError, ok := (err).(*github.ErrorResponse); ok {
+			gitHubStatus := gitHubError.Response.StatusCode
+			if gitHubStatus == http.StatusUnauthorized ||
+				gitHubStatus == http.StatusForbidden {
+				c.Errorf("  GitHub auth error while getting digest, sending error email: %s", err.Error())
+				var authErrorHtml bytes.Buffer
+				if err := templates["github-auth-error-email"].Execute(&authErrorHtml, nil); err != nil {
+					return false, err
+				}
+
+				digestMessage := &mail.Message{
+					Sender:   "RetroGit <digests@retrogit.com>",
+					To:       []string{emailAddress},
+					Subject:  "RetroGit Digest Error",
+					HTMLBody: authErrorHtml.String(),
+				}
+				err = mail.Send(c, digestMessage)
+				return false, err
+			}
+		}
 		return false, err
 	}
 	if digest.Empty() {

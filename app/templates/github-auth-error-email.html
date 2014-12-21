@@ -1,0 +1,16 @@
+<p>
+  A RetroGit digest could not be generated for your account due to a GitHub
+  authentication error. You may have revoked RetroGit's access (you can see this
+  on your <a href="https://github.com/settings/applications">GitHub settings
+  page</a>). If you wish to grant it access again, use the button below:
+</p>
+
+<form id="sign-in-form" method="POST" action="{{absoluteRouteUrl "sign-in"}}">
+  <input type="submit" class="action-button" value="Sign In with GitHub">
+  <label>
+    <input type="checkbox" name="include_private" value="1" checked>
+    Include private repositories
+  </label>
+</form>
+
+{{template "email-footer"}}
