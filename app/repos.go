@@ -40,8 +40,8 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoId in
 	githubClient := github.NewClient(oauthTransport.Client())
 
 	repo, response, err := githubClient.Repositories.Get(repoOwnerLogin, repoName)
-	if response.StatusCode == 404 {
-		c.Warningf("Got a 404 when trying to look up %s/%s (%d)", repoOwnerLogin, repoName, repoId)
+	if response.StatusCode == 403 || response.StatusCode == 404 {
+		c.Warningf("Got a %d when trying to look up %s/%s (%d)", response.StatusCode, repoOwnerLogin, repoName, repoId)
 		_, err = datastore.Put(c, getVintageKey(c, userId, repoId), &RepoVintage{
 			UserId:  userId,
 			RepoId:  repoId,
