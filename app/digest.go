@@ -316,6 +316,5 @@ func (digest *Digest) Redact() {
 				commit.Message = "Redacted redacted redacted"
 			}
 		}
-
 	}
 }

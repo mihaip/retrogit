@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="/static/admin.css">
 
 <div class="blurb">
-  {{.TotalUsers}} users with {{.TotalRepos}} repositories.
+  {{len .Users}} users.
 </div>
 
 <table id="users-table">
@@ -15,14 +15,15 @@
       <th>Username</th>
       <th>Email</th>
       <th>Frequency</th>
-      <th>Repositories</th>
+      <th>Digest</th>
+      <th>Repos</th>
       <th>Account</th>
     </tr>
   </thead>
   <tbody>
     {{range .Users}}
       <tr>
-        <td><a href="{{routeUrl "digest-admin"}}?user_id={{.Account.GitHubUserId}}">{{.Account.GitHubUserId}}</a></td>
+        <td>{{.Account.GitHubUserId}}</td>
         <td>
           {{if .User}}
             {{template "user" .User}}
@@ -32,13 +33,8 @@
         </td>
         <td>{{.EmailAddress}}</td>
         <td>{{.Account.Frequency}}</td>
-        <td>
-          {{if .ReposError}}
-            {{.ReposError}}
-          {{else}}
-            {{len .Repos.AllRepos}} from {{len .Repos.OtherUserRepos}} other users and {{len .Repos.OrgRepos}} organizations
-          {{end}}
-        </td>
+        <td><a href="{{routeUrl "digest-admin"}}?user_id={{.Account.GitHubUserId}}">View</a></td>
+        <td><a href="{{routeUrl "repos-admin"}}?user_id={{.Account.GitHubUserId}}">View</a></td>
         <td>
           <form method="POST" action="{{routeUrl "delete-account-admin"}}" onsubmit="return confirm('Really delete?')">
             <input type="hidden" name="user_id" value="{{.Account.GitHubUserId}}">

@@ -167,6 +167,29 @@ type Repos struct {
 	OldestVintage  time.Time
 }
 
+func (repos *Repos) Redact() {
+	for _, repo := range repos.UserRepos {
+		*repo.HTMLURL = "https://redacted"
+		*repo.FullName = "redacted/redacted"
+	}
+	for _, otherUserRepos := range repos.OtherUserRepos {
+		*otherUserRepos.User.Login = "redacted"
+		*otherUserRepos.User.AvatarURL = "https://redacted"
+		for _, repo := range otherUserRepos.Repos {
+			*repo.HTMLURL = "https://redacted"
+			*repo.FullName = "redacted/redacted"
+		}
+	}
+	for _, orgRepos := range repos.OrgRepos {
+		*orgRepos.Org.Login = "redacted"
+		*orgRepos.Org.AvatarURL = "https://redacted"
+		for _, repo := range orgRepos.Repos {
+			*repo.HTMLURL = "https://redacted"
+			*repo.FullName = "redacted/redacted"
+		}
+	}
+}
+
 type Repo struct {
 	*github.Repository
 	Vintage         time.Time

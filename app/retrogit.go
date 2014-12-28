@@ -58,6 +58,7 @@ func init() {
 
 	router.Handle("/admin/users", AppHandler(usersAdminHandler)).Name("users-admin")
 	router.Handle("/admin/digest", AppHandler(digestAdminHandler)).Name("digest-admin")
+	router.Handle("/admin/repos", AppHandler(reposAdminHandler)).Name("repos-admin")
 	router.Handle("/admin/delete-account", AppHandler(deleteAccountAdminHandler)).Name("delete-account-admin")
 	http.Handle("/", router)
 }
