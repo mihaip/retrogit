@@ -16,6 +16,7 @@
       <th>Email</th>
       <th>Frequency</th>
       <th>Repositories</th>
+      <th>Account</th>
     </tr>
   </thead>
   <tbody>
@@ -37,6 +38,12 @@
           {{else}}
             {{len .Repos.AllRepos}} from {{len .Repos.OtherUserRepos}} other users and {{len .Repos.OrgRepos}} organizations
           {{end}}
+        </td>
+        <td>
+          <form method="POST" action="{{routeUrl "delete-account-admin"}}" onsubmit="return confirm('Really delete?')">
+            <input type="hidden" name="user_id" value="{{.Account.GitHubUserId}}">
+            <input type="submit" value="Delete">
+          </form>
         </td>
       </tr>
     {{end}}

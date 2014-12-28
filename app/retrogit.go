@@ -56,8 +56,9 @@ func init() {
 	router.Handle("/account/set-initial-timezone", SignedInAppHandler(setInitialTimezoneHandler)).Name("set-initial-timezone").Methods("POST")
 	router.Handle("/account/delete", SignedInAppHandler(deleteAccountHandler)).Name("delete-account").Methods("POST")
 
-	router.Handle("/admin/users", AppHandler(usersAdminHandler))
+	router.Handle("/admin/users", AppHandler(usersAdminHandler)).Name("users-admin")
 	router.Handle("/admin/digest", AppHandler(digestAdminHandler)).Name("digest-admin")
+	router.Handle("/admin/delete-account", AppHandler(deleteAccountAdminHandler)).Name("delete-account-admin")
 	http.Handle("/", router)
 }
 
@@ -622,6 +623,24 @@ func digestAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		"Digest": digest,
 	}
 	return templates["digest-admin"].Render(w, data)
+}
+
+func deleteAccountAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
+	userId, err := strconv.Atoi(r.FormValue("user_id"))
+	if err != nil {
+		return BadRequest(err, "Malformed user_id value")
+	}
+	c := appengine.NewContext(r)
+	account, err := getAccount(c, userId)
+	if account == nil {
+		return BadRequest(err, "user_id does not point to an account")
+	}
+	if err != nil {
+		return InternalError(err, "Could not look up account")
+	}
+
+	account.Delete(c)
+	return RedirectToRoute("users-admin")
 }
 
 func githubOAuthTransport(c appengine.Context) *oauth.Transport {
