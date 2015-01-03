@@ -118,8 +118,10 @@ func reposAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 
 	user, _, err := githubClient.Users.Get("")
 	repos, reposErr := getRepos(c, githubClient, account, user)
+	if err == nil {
+		repos.Redact()
+	}
 
-	repos.Redact()
 	var data = map[string]interface{}{
 		"User":       user,
 		"Repos":      repos,
