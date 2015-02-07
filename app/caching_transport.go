@@ -31,6 +31,7 @@ func (t *CachingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	// need to hash the URL to make sure we stay under it.
 	cacheHash := md5.New()
 	io.WriteString(cacheHash, req.URL.String())
+
 	authorizationHeaders, ok := req.Header["Authorization"]
 	if ok {
 		for i := range authorizationHeaders {
@@ -38,6 +39,12 @@ func (t *CachingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 		}
 	} else {
 		io.WriteString(cacheHash, "Unauthorized")
+	}
+	acceptHeaders, ok := req.Header["Accept"]
+	if ok {
+		for i := range acceptHeaders {
+			io.WriteString(cacheHash, acceptHeaders[i])
+		}
 	}
 	cacheKey := fmt.Sprintf("CachingTransport:%x", cacheHash.Sum(nil))
 
