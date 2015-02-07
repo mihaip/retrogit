@@ -266,8 +266,9 @@ func getRepos(c appengine.Context, githubClient *github.Client, account *Account
 	repos := &Repos{}
 	repos.UserRepos = make([]*Repo, 0, len(clientUserRepos))
 	repos.OtherUserRepos = make([]*UserRepos, 0)
-	allRepoCount := len(clientUserRepos)
+	allRepoNames := make(map[string]int)
 	for i := range clientUserRepos {
+		allRepoNames[*clientUserRepos[i].FullName] = 1
 		ownerID := *clientUserRepos[i].Owner.ID
 		if ownerID == *user.ID {
 			repos.UserRepos = append(repos.UserRepos, newRepo(&clientUserRepos[i], account))
@@ -326,14 +327,26 @@ func getRepos(c appengine.Context, githubClient *github.Client, account *Account
 			page = response.NextPage
 		}
 		orgRepos := make([]*Repo, 0, len(clientOrgRepos))
-		allRepoCount += len(clientOrgRepos)
 		for j := range clientOrgRepos {
+			// Due to https://developer.github.com/changes/2014-12-08-
+			// organization-permissions-api-preview/ we will start getting
+			// organization repos in the user repos response above. Make sure
+			// we don't list repositories twice.
+			// TODO: Once that change is deployed, we should be able to stop
+			// querying organization repos altogether.
+			_, ok := allRepoNames[*clientOrgRepos[j].FullName]
+			if ok {
+				c.Infof("Already had repo %s, not adding",
+					*clientOrgRepos[j].FullName)
+				continue
+			}
+			allRepoNames[*clientOrgRepos[j].FullName] = 1
 			orgRepos = append(orgRepos, newRepo(&clientOrgRepos[j], account))
 		}
 		repos.OrgRepos = append(repos.OrgRepos, &OrgRepos{org, orgRepos})
 	}
 
-	repos.AllRepos = make([]*Repo, 0, allRepoCount)
+	repos.AllRepos = make([]*Repo, 0, len(allRepoNames))
 	repos.AllRepos = append(repos.AllRepos, repos.UserRepos...)
 	for _, userRepos := range repos.OtherUserRepos {
 		repos.AllRepos = append(repos.AllRepos, userRepos.Repos...)
