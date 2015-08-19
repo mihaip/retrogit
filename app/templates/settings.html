@@ -114,19 +114,6 @@
         </div>
       {{end}}
 
-      {{range .Repos.OrgRepos}}
-        <div class="repos">
-          <h2>
-            <a href="https://github.com/{{.Org.Login}}">
-            <img src="{{.Org.AvatarURL}}" class="avatar">{{.Org.Login}}</a>
-          </h2>
-          <ul>
-            {{range .Repos}}
-              {{template "repo" .}}
-            {{end}}
-          </ul>
-        </div>
-      {{end}}
     </div>
   </label>
 </div>

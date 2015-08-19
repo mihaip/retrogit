@@ -13,7 +13,7 @@
 {{if .ReposError}}
   {{.ReposError}}
 {{else}}
-  {{len .Repos.AllRepos}} from {{len .Repos.OtherUserRepos}} other users and {{len .Repos.OrgRepos}} organizations
+  {{len .Repos.AllRepos}} from {{len .Repos.OtherUserRepos}} other users
 
   <div class="repos">
     <h2>
@@ -31,19 +31,6 @@
     <div class="repos">
       <h2>
         <a href="https://github.com/{{.User.Login}}">{{.User.Login}}</a>
-      </h2>
-      <ul>
-        {{range .Repos}}
-          {{template "repo" .}}
-        {{end}}
-      </ul>
-    </div>
-  {{end}}
-
-  {{range .Repos.OrgRepos}}
-    <div class="repos">
-      <h2>
-        <a href="https://github.com/{{.Org.Login}}">{{.Org.Login}}</a>
       </h2>
       <ul>
         {{range .Repos}}

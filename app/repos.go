@@ -163,7 +163,6 @@ type Repos struct {
 	AllRepos       []*Repo
 	UserRepos      []*Repo
 	OtherUserRepos []*UserRepos
-	OrgRepos       []*OrgRepos
 	OldestVintage  time.Time
 }
 
@@ -176,14 +175,6 @@ func (repos *Repos) Redact() {
 		*otherUserRepos.User.Login = "redacted"
 		*otherUserRepos.User.AvatarURL = "https://redacted"
 		for _, repo := range otherUserRepos.Repos {
-			*repo.HTMLURL = "https://redacted"
-			*repo.FullName = "redacted/redacted"
-		}
-	}
-	for _, orgRepos := range repos.OrgRepos {
-		*orgRepos.Org.Login = "redacted"
-		*orgRepos.Org.AvatarURL = "https://redacted"
-		for _, repo := range orgRepos.Repos {
 			*repo.HTMLURL = "https://redacted"
 			*repo.FullName = "redacted/redacted"
 		}
@@ -233,11 +224,6 @@ type UserRepos struct {
 	Repos []*Repo
 }
 
-type OrgRepos struct {
-	Org   *github.Organization
-	Repos []*Repo
-}
-
 func getRepos(c appengine.Context, githubClient *github.Client, account *Account, user *github.User) (*Repos, error) {
 	clientUserRepos := make([]github.Repository, 0)
 	page := 1
@@ -266,9 +252,7 @@ func getRepos(c appengine.Context, githubClient *github.Client, account *Account
 	repos := &Repos{}
 	repos.UserRepos = make([]*Repo, 0, len(clientUserRepos))
 	repos.OtherUserRepos = make([]*UserRepos, 0)
-	allRepoNames := make(map[string]int)
 	for i := range clientUserRepos {
-		allRepoNames[*clientUserRepos[i].FullName] = 1
 		ownerID := *clientUserRepos[i].Owner.ID
 		if ownerID == *user.ID {
 			repos.UserRepos = append(repos.UserRepos, newRepo(&clientUserRepos[i], account))
@@ -291,71 +275,13 @@ func getRepos(c appengine.Context, githubClient *github.Client, account *Account
 		}
 	}
 
-	orgs, _, err := githubClient.Organizations.List(
-		"",
-		&github.ListOptions{
-			// Don't bother with pagination for the organization list, the user
-			// is unlikely to have that many.
-			PerPage: 100,
-		})
-	if err != nil {
-		return nil, err
-	}
-
-	repos.OrgRepos = make([]*OrgRepos, 0, len(orgs))
-	for i := range orgs {
-		org := &orgs[i]
-		clientOrgRepos := make([]github.Repository, 0)
-		page := 1
-		for {
-			pageClientOrgRepos, response, err := githubClient.Repositories.ListByOrg(
-				*org.Login,
-				&github.RepositoryListByOrgOptions{
-					Type: "member",
-					ListOptions: github.ListOptions{
-						Page:    page,
-						PerPage: 100,
-					},
-				})
-			if err != nil {
-				return nil, err
-			}
-			clientOrgRepos = append(clientOrgRepos, pageClientOrgRepos...)
-			if response.NextPage == 0 {
-				break
-			}
-			page = response.NextPage
-		}
-		orgRepos := make([]*Repo, 0, len(clientOrgRepos))
-		for j := range clientOrgRepos {
-			// Due to https://developer.github.com/changes/2014-12-08-
-			// organization-permissions-api-preview/ we will start getting
-			// organization repos in the user repos response above. Make sure
-			// we don't list repositories twice.
-			// TODO: Once that change is deployed, we should be able to stop
-			// querying organization repos altogether.
-			_, ok := allRepoNames[*clientOrgRepos[j].FullName]
-			if ok {
-				c.Infof("Already had repo %s, not adding",
-					*clientOrgRepos[j].FullName)
-				continue
-			}
-			allRepoNames[*clientOrgRepos[j].FullName] = 1
-			orgRepos = append(orgRepos, newRepo(&clientOrgRepos[j], account))
-		}
-		repos.OrgRepos = append(repos.OrgRepos, &OrgRepos{org, orgRepos})
-	}
-
-	repos.AllRepos = make([]*Repo, 0, len(allRepoNames))
+	repos.AllRepos = make([]*Repo, 0, len(clientUserRepos))
 	repos.AllRepos = append(repos.AllRepos, repos.UserRepos...)
 	for _, userRepos := range repos.OtherUserRepos {
 		repos.AllRepos = append(repos.AllRepos, userRepos.Repos...)
 	}
-	for _, org := range repos.OrgRepos {
-		repos.AllRepos = append(repos.AllRepos, org.Repos...)
-	}
 
-	err = fillVintages(c, user, repos.AllRepos)
+	err := fillVintages(c, user, repos.AllRepos)
 	if err != nil {
 		return nil, err
 	}
