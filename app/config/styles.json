@@ -52,7 +52,7 @@
       "cover": {
         "width": "0",
         "height": "0",
-        "border": "solid",
+        "border-style": "solid",
         "border-width": "0 0 20px 10px",
         "border-color": "transparent transparent #dddac8 #fff"
       },
@@ -60,7 +60,7 @@
         "margin": "1px 0 0 1px",
         "width": "0",
         "height": "0",
-        "border": "solid",
+        "border-style": "solid",
         "border-width": "0 0 20px 10px",
         "border-color": "transparent transparent #fefcef transparent"
       }
