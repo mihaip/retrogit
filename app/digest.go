@@ -194,7 +194,7 @@ func newDigest(c appengine.Context, githubClient *github.Client, account *Accoun
 		if account.Frequency == "weekly" {
 			daysInDigest = 7
 		}
-		digestEndTime := digestStartTime.AddDate(0, 0, daysInDigest)
+		digestEndTime := digestStartTime.AddDate(0, 0, daysInDigest).Add(-time.Second)
 
 		// Only look at repos that may have activity in the digest interval.
 		var intervalRepos []*Repo
