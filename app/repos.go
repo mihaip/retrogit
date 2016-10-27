@@ -14,6 +14,7 @@ import (
 
 const (
 	VintageDateFormat = "January 2, 2006"
+	VintageChunkSize  = 1000
 )
 
 type RepoVintage struct {
@@ -122,6 +123,19 @@ func init() {
 }
 
 func fillVintages(c appengine.Context, user *github.User, repos []*Repo) error {
+	if len(repos) > VintageChunkSize {
+		for chunkStart := 0; chunkStart < len(repos); chunkStart += VintageChunkSize {
+			chunkEnd := chunkStart + VintageChunkSize
+			if chunkEnd > len(repos) {
+				chunkEnd = len(repos)
+			}
+			err := fillVintages(c, user, repos[chunkStart:chunkEnd])
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	keys := make([]*datastore.Key, len(repos))
 	for i := range repos {
 		keys[i] = getVintageKey(c, *user.ID, *repos[i].ID)
