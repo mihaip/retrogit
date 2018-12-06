@@ -2,3 +2,6 @@ queue:
 # Change the refresh rate of the default queue from 5/s to 50/s
 - name: default
   rate: 50/s
+  retry_parameters:
+    task_retry_limit: 5
+    min_backoff_seconds: 300
