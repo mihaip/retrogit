@@ -21,5 +21,5 @@ The server can the be accessed at [http://localhost:8080/](http://localhost:8080
 ## Deploying to App Engine
 
 ```
-goapp deploy -oauth app
+gcloud app deploy --project retrogit app/app.yaml
 ```
