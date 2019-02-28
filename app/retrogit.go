@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -267,6 +268,10 @@ var sendDigestForAccountFunc = delay.Func(
 	})
 
 func sendDigestErrorMail(e error, c appengine.Context, gitHubUserId int) {
+	if strings.Contains(e.Error(), ": 502") {
+		// Ignore 502s from GitHub, there's nothing we do about them.
+		return;
+	}
 	errorMessage := &mail.Message{
 		Sender:  "RetroGit Admin <digests@retrogit.com>",
 		To:      []string{"mihai.parparita@gmail.com"},
