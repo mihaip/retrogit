@@ -1,11 +1,12 @@
-package retrogit
+package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
+	log_ "log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -13,11 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"appengine"
-	"appengine/datastore"
-	"appengine/delay"
-	"appengine/mail"
-	"appengine/urlfetch"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/delay"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/mail"
+	"google.golang.org/appengine/urlfetch"
 
 	"code.google.com/p/goauth2/oauth"
 	"github.com/google/go-github/github"
@@ -33,7 +35,7 @@ var sessionStore *sessions.CookieStore
 var sessionConfig SessionConfig
 var templates map[string]*Template
 
-func init() {
+func main() {
 	templates = loadTemplates()
 	timezones = initTimezones()
 	sessionStore, sessionConfig = initSession()
@@ -62,6 +64,8 @@ func init() {
 	router.Handle("/admin/repos", AppHandler(reposAdminHandler)).Name("repos-admin")
 	router.Handle("/admin/delete-account", AppHandler(deleteAccountAdminHandler)).Name("delete-account-admin")
 	http.Handle("/", router)
+
+	appengine.Main()
 }
 
 func initGithubOAuthConfig(includePrivateRepos bool) (config oauth.Config) {
@@ -72,11 +76,11 @@ func initGithubOAuthConfig(includePrivateRepos bool) (config oauth.Config) {
 	path += ".json"
 	configBytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Panicf("Could not read GitHub OAuth config from %s: %s", path, err.Error())
+		log_.Panicf("Could not read GitHub OAuth config from %s: %s", path, err.Error())
 	}
 	err = json.Unmarshal(configBytes, &config)
 	if err != nil {
-		log.Panicf("Could not parse GitHub OAuth config %s: %s", configBytes, err.Error())
+		log_.Panicf("Could not parse GitHub OAuth config %s: %s", configBytes, err.Error())
 	}
 	repoScopeModifier := ""
 	if !includePrivateRepos {
@@ -232,12 +236,12 @@ func digestCronHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		if account.Frequency == "weekly" {
 			now := time.Now().In(account.TimezoneLocation)
 			if now.Weekday() != account.WeeklyDay {
-				c.Infof("Skipping %d, since it wants weekly digests on %ss and today is a %s.",
+				log.Infof(c, "Skipping %d, since it wants weekly digests on %ss and today is a %s.",
 					account.GitHubUserId, account.WeeklyDay, now.Weekday())
 				continue
 			}
 		}
-		c.Infof("Enqueing task for %d...", account.GitHubUserId)
+		log.Infof(c, "Enqueing task for %d...", account.GitHubUserId)
 		sendDigestForAccountFunc.Call(c, account.GitHubUserId)
 	}
 	fmt.Fprint(w, "Done")
@@ -246,31 +250,31 @@ func digestCronHandler(w http.ResponseWriter, r *http.Request) *AppError {
 
 var sendDigestForAccountFunc = delay.Func(
 	"sendDigestForAccount",
-	func(c appengine.Context, githubUserId int) error {
-		c.Infof("Sending digest for %d...", githubUserId)
+	func(c context.Context, githubUserId int) error {
+		log.Infof(c, "Sending digest for %d...", githubUserId)
 		account, err := getAccount(c, githubUserId)
 		if err != nil {
-			c.Errorf("  Error looking up account: %s", err.Error())
+			log.Errorf(c, "  Error looking up account: %s", err.Error())
 			return err
 		}
 		sent, err := sendDigestForAccount(account, c)
 		if err != nil {
-			c.Errorf("  Error: %s", err.Error())
+			log.Errorf(c, "  Error: %s", err.Error())
 			if !appengine.IsDevAppServer() {
 				sendDigestErrorMail(err, c, githubUserId)
 			}
 		} else if sent {
-			c.Infof("  Sent!")
+			log.Infof(c, "  Sent!")
 		} else {
-			c.Infof("  Not sent, digest was empty")
+			log.Infof(c, "  Not sent, digest was empty")
 		}
 		return err
 	})
 
-func sendDigestErrorMail(e error, c appengine.Context, gitHubUserId int) {
+func sendDigestErrorMail(e error, c context.Context, gitHubUserId int) {
 	if strings.Contains(e.Error(), ": 502") {
 		// Ignore 502s from GitHub, there's nothing we do about them.
-		return;
+		return
 	}
 	errorMessage := &mail.Message{
 		Sender:  "RetroGit Admin <digests@retrogit.com>",
@@ -280,11 +284,11 @@ func sendDigestErrorMail(e error, c appengine.Context, gitHubUserId int) {
 	}
 	err := mail.Send(c, errorMessage)
 	if err != nil {
-		c.Errorf("Error %s sending error email.", err.Error())
+		log.Errorf(c, "Error %s sending error email.", err.Error())
 	}
 }
 
-func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
+func sendDigestForAccount(account *Account, c context.Context) (bool, error) {
 	oauthTransport := githubOAuthTransport(c)
 	oauthTransport.Token = &account.OAuthToken
 	githubClient := github.NewClient(oauthTransport.Client())
@@ -295,7 +299,7 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 			gitHubStatus := gitHubError.Response.StatusCode
 			if gitHubStatus == http.StatusUnauthorized ||
 				gitHubStatus == http.StatusForbidden {
-				c.Errorf("  GitHub auth error while getting email adddress, skipping: %s", err.Error())
+				log.Errorf(c, "  GitHub auth error while getting email adddress, skipping: %s", err.Error())
 				return false, nil
 			}
 		}
@@ -312,7 +316,7 @@ func sendDigestForAccount(account *Account, c appengine.Context) (bool, error) {
 			gitHubStatus := gitHubError.Response.StatusCode
 			if gitHubStatus == http.StatusUnauthorized ||
 				gitHubStatus == http.StatusForbidden {
-				c.Errorf("  GitHub auth error while getting digest, sending error email: %s", err.Error())
+				log.Errorf(c, "  GitHub auth error while getting digest, sending error email: %s", err.Error())
 				var authErrorHtml bytes.Buffer
 				if err := templates["github-auth-error-email"].Execute(&authErrorHtml, nil); err != nil {
 					return false, err
@@ -516,11 +520,11 @@ func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request, state *Ap
 
 var cacheDigestForAccountFunc = delay.Func(
 	"cacheDigestForAccount",
-	func(c appengine.Context, githubUserId int) error {
-		c.Infof("Caching digest for %d...", githubUserId)
+	func(c context.Context, githubUserId int) error {
+		log.Infof(c, "Caching digest for %d...", githubUserId)
 		account, err := getAccount(c, githubUserId)
 		if err != nil {
-			c.Errorf("  Error looking up account: %s", err.Error())
+			log.Errorf(c, "  Error looking up account: %s", err.Error())
 			// Not returning error since we don't want these tasks to be
 			// retried.
 			return nil
@@ -531,9 +535,9 @@ var cacheDigestForAccountFunc = delay.Func(
 		githubClient := github.NewClient(oauthTransport.Client())
 		_, err = newDigest(c, githubClient, account)
 		if err != nil {
-			c.Errorf("  Error computing digest: %s", err.Error())
+			log.Errorf(c, "  Error computing digest: %s", err.Error())
 		}
-		c.Infof("  Done!")
+		log.Infof(c, "  Done!")
 		return nil
 	})
 
@@ -544,12 +548,12 @@ func deleteAccountHandler(w http.ResponseWriter, r *http.Request, state *AppSign
 	return RedirectToRoute("index")
 }
 
-func githubOAuthTransport(c appengine.Context) *oauth.Transport {
-	appengineTransport := &urlfetch.Transport{Context: c}
-	appengineTransport.Deadline = time.Second * 60
+func githubOAuthTransport(c context.Context) *oauth.Transport {
+	ctx_with_timeout, _ := context.WithTimeout(c, time.Second*60)
+	appengineTransport := &urlfetch.Transport{Context: ctx_with_timeout}
 	cachingTransport := &CachingTransport{
 		Transport: appengineTransport,
-		Context:   c,
+		Context:   ctx_with_timeout,
 	}
 	return &oauth.Transport{
 		Config:    &githubOauthConfig,

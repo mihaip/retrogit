@@ -1,6 +1,6 @@
 # RetroGit
 
-Service that shows you your GitHub commits from a year ago. Includes a mail digest to that you can see each day what you were up to in the past.
+Service that shows you your GitHub commits from previous years. Includes a mail digest to that you can see each day what you were up to in the past.
 
 It's currently running at [https://www.retrogit.com/](https://www.retrogit.com/).
 
@@ -21,5 +21,5 @@ The server can the be accessed at [http://localhost:8080/](http://localhost:8080
 ## Deploying to App Engine
 
 ```
-gcloud app deploy --project retrogit app/app.yaml
+./deploy.sh
 ```

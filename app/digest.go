@@ -1,13 +1,14 @@
-package retrogit
+package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine/log"
 
 	"github.com/google/go-github/github"
 )
@@ -171,7 +172,7 @@ type Digest struct {
 	RepoErrors       map[string]error
 }
 
-func newDigest(c appengine.Context, githubClient *github.Client, account *Account) (*Digest, error) {
+func newDigest(c context.Context, githubClient *github.Client, account *Account) (*Digest, error) {
 	user, _, err := githubClient.Users.Get("")
 	if err != nil {
 		return nil, err
@@ -225,7 +226,7 @@ func newDigest(c appengine.Context, githubClient *github.Client, account *Accoun
 
 	digest.fetch(githubClient)
 	for repoFullName, err := range digest.RepoErrors {
-		c.Errorf("Error fetching %s: %s", repoFullName, err.Error())
+		log.Errorf(c, "Error fetching %s: %s", repoFullName, err.Error())
 	}
 	return digest, nil
 }

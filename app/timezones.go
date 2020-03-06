@@ -1,4 +1,4 @@
-package retrogit
+package main
 
 import (
 	"encoding/json"

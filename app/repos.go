@@ -1,13 +1,15 @@
-package retrogit
+package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"appengine"
-	"appengine/datastore"
-	"appengine/delay"
-	"appengine/taskqueue"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/delay"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/taskqueue"
 
 	"github.com/google/go-github/github"
 )
@@ -23,16 +25,16 @@ type RepoVintage struct {
 	Vintage time.Time `datastore:",noindex"`
 }
 
-func getVintageKey(c appengine.Context, userId int, repoId int) *datastore.Key {
+func getVintageKey(c context.Context, userId int, repoId int) *datastore.Key {
 	return datastore.NewKey(c, "RepoVintage", fmt.Sprintf("%d-%d", userId, repoId), 0, nil)
 }
 
 var computeVintageFunc *delay.Function
 
-func computeVintage(c appengine.Context, userId int, userLogin string, repoId int, repoOwnerLogin string, repoName string) error {
+func computeVintage(c context.Context, userId int, userLogin string, repoId int, repoOwnerLogin string, repoName string) error {
 	account, err := getAccount(c, userId)
 	if err != nil {
-		c.Errorf("Could not load account %d: %s. Presumed deleted, aborting computing vintage for %s/%s", userId, err.Error(), repoOwnerLogin, repoName)
+		log.Errorf(c, "Could not load account %d: %s. Presumed deleted, aborting computing vintage for %s/%s", userId, err.Error(), repoOwnerLogin, repoName)
 		return nil
 	}
 
@@ -42,7 +44,7 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoId in
 
 	repo, response, err := githubClient.Repositories.Get(repoOwnerLogin, repoName)
 	if response.StatusCode == 403 || response.StatusCode == 404 {
-		c.Warningf("Got a %d when trying to look up %s/%s (%d)", response.StatusCode, repoOwnerLogin, repoName, repoId)
+		log.Warningf(c, "Got a %d when trying to look up %s/%s (%d)", response.StatusCode, repoOwnerLogin, repoName, repoId)
 		_, err = datastore.Put(c, getVintageKey(c, userId, repoId), &RepoVintage{
 			UserId:  userId,
 			RepoId:  repoId,
@@ -50,7 +52,7 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoId in
 		})
 		return err
 	} else if err != nil {
-		c.Errorf("Could not load repo %s/%s (%d): %s", repoOwnerLogin, repoName, repoId, err.Error())
+		log.Errorf(c, "Could not load repo %s/%s (%d): %s", repoOwnerLogin, repoName, repoId, err.Error())
 		return err
 	}
 
@@ -69,7 +71,7 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoId in
 		// GitHub returns with a 409 when a repository is empty.
 		commits = make([]github.RepositoryCommit, 0)
 	} else if err != nil {
-		c.Errorf("Could not load commits for repo %s (%d): %s", *repo.FullName, repoId, err.Error())
+		log.Errorf(c, "Could not load commits for repo %s (%d): %s", *repo.FullName, repoId, err.Error())
 		return err
 	}
 
@@ -78,10 +80,10 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoId in
 	if len(commits) > 0 {
 		stats, response, err := githubClient.Repositories.ListContributorsStats(repoOwnerLogin, repoName)
 		if response.StatusCode == 202 {
-			c.Infof("Stats were not available for %s, will try again later", *repo.FullName)
+			log.Infof(c, "Stats were not available for %s, will try again later", *repo.FullName)
 			task, err := computeVintageFunc.Task(userId, userLogin, repoId, repoOwnerLogin, repoName)
 			if err != nil {
-				c.Errorf("Could create delayed task for %s: %s", *repo.FullName, err.Error())
+				log.Errorf(c, "Could create delayed task for %s: %s", *repo.FullName, err.Error())
 				return err
 			}
 			task.Delay = time.Second * 10
@@ -89,7 +91,7 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoId in
 			return nil
 		}
 		if err != nil {
-			c.Errorf("Could not load stats for repo %s: %s", *repo.FullName, err.Error())
+			log.Errorf(c, "Could not load stats for repo %s: %s", *repo.FullName, err.Error())
 			return err
 		}
 		for _, stat := range stats {
@@ -111,7 +113,7 @@ func computeVintage(c appengine.Context, userId int, userLogin string, repoId in
 		Vintage: vintage,
 	})
 	if err != nil {
-		c.Errorf("Could save vintage for repo %s: %s", *repo.FullName, err.Error())
+		log.Errorf(c, "Could save vintage for repo %s: %s", *repo.FullName, err.Error())
 		return err
 	}
 
@@ -122,7 +124,7 @@ func init() {
 	computeVintageFunc = delay.Func("computeVintage", computeVintage)
 }
 
-func fillVintages(c appengine.Context, user *github.User, repos []*Repo) error {
+func fillVintages(c context.Context, user *github.User, repos []*Repo) error {
 	if len(repos) > VintageChunkSize {
 		for chunkStart := 0; chunkStart < len(repos); chunkStart += VintageChunkSize {
 			chunkEnd := chunkStart + VintageChunkSize
@@ -151,7 +153,7 @@ func fillVintages(c appengine.Context, user *github.User, repos []*Repo) error {
 				if err == datastore.ErrNoSuchEntity {
 					vintages[i] = nil
 				} else if err != nil {
-					c.Errorf("%d/%s vintage fetch error: %s", i, *repos[i].FullName, err.Error())
+					log.Errorf(c, "%d/%s vintage fetch error: %s", i, *repos[i].FullName, err.Error())
 					return err
 				}
 			}
@@ -238,7 +240,7 @@ type UserRepos struct {
 	Repos []*Repo
 }
 
-func getRepos(c appengine.Context, githubClient *github.Client, account *Account, user *github.User) (*Repos, error) {
+func getRepos(c context.Context, githubClient *github.Client, account *Account, user *github.User) (*Repos, error) {
 	clientUserRepos := make([]github.Repository, 0)
 	page := 1
 	for {

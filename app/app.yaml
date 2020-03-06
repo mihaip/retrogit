@@ -1,5 +1,4 @@
-runtime: go
-api_version: go1
+runtime: go111
 
 handlers:
 - url: /static
@@ -11,11 +10,11 @@ handlers:
   static_files: static/robots.txt
   upload: static/robots.txt
 - url: /digest/cron
-  script: _go_app
+  script: auto
   login: admin
 - url: /admin/.*
-  script: _go_app
+  script: auto
   login: admin
 - url: /.*
-  script: _go_app
+  script: auto
   secure: always

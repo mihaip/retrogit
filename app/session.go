@@ -1,4 +1,4 @@
-package retrogit
+package main
 
 import (
 	"encoding/base64"
@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/gorilla/sessions"
 )

@@ -1,4 +1,4 @@
-package retrogit
+package main
 
 // From Martini's recovery package:
 // https://github.com/go-martini/martini/blob/master/recovery.go

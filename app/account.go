@@ -1,13 +1,13 @@
-package retrogit
+package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"time"
 
-	"appengine"
-	"appengine/datastore"
+	"google.golang.org/appengine/datastore"
 
 	"code.google.com/p/goauth2/oauth"
 	"github.com/google/go-github/github"
@@ -28,7 +28,7 @@ type Account struct {
 	WeeklyDay            time.Weekday
 }
 
-func getAccount(c appengine.Context, githubUserId int) (*Account, error) {
+func getAccount(c context.Context, githubUserId int) (*Account, error) {
 	key := datastore.NewKey(c, "Account", "", int64(githubUserId), nil)
 	account := new(Account)
 	err := datastore.Get(c, key, account)
@@ -63,7 +63,7 @@ func initAccount(account *Account) error {
 	return nil
 }
 
-func getAllAccounts(c appengine.Context) ([]Account, error) {
+func getAllAccounts(c context.Context) ([]Account, error) {
 	q := datastore.NewQuery("Account")
 	var accounts []Account
 	_, err := q.GetAll(c, &accounts)
@@ -88,7 +88,7 @@ func (account *Account) IsRepoIdExcluded(repoId int) bool {
 	return false
 }
 
-func (account *Account) Put(c appengine.Context) error {
+func (account *Account) Put(c context.Context) error {
 	w := new(bytes.Buffer)
 	err := gob.NewEncoder(w).Encode(&account.OAuthToken)
 	if err != nil {
@@ -100,7 +100,7 @@ func (account *Account) Put(c appengine.Context) error {
 	return err
 }
 
-func (account *Account) Delete(c appengine.Context) error {
+func (account *Account) Delete(c context.Context) error {
 	key := datastore.NewKey(c, "Account", "", int64(account.GitHubUserId), nil)
 	err := datastore.Delete(c, key)
 	return err

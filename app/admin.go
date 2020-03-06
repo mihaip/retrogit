@@ -1,11 +1,11 @@
-package retrogit
+package main
 
 import (
 	"net/http"
 	"sort"
 	"strconv"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/google/go-github/github"
 )
