@@ -276,6 +276,12 @@ func sendDigestErrorMail(e error, c context.Context, gitHubUserId int) {
 		// Ignore 502s from GitHub, there's nothing we do about them.
 		return
 	}
+	if appengine.IsTimeoutError(e) ||
+		strings.Contains(e.Error(), "DEADLINE_EXCEEDED") {
+		// Ignore deadline exceeded errors for URL fetches
+		return
+	}
+
 	errorMessage := &mail.Message{
 		Sender:  "RetroGit Admin <digests@retrogit.com>",
 		To:      []string{"mihai.parparita@gmail.com"},
