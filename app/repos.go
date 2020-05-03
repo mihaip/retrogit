@@ -70,8 +70,14 @@ func computeVintage(c context.Context, userId int, userLogin string, repoId int,
 	if response != nil && response.StatusCode == 409 {
 		// GitHub returns with a 409 when a repository is empty.
 		commits = make([]github.RepositoryCommit, 0)
+	} else if response != nil && response.StatusCode >= 500 {
+		// Avoid retries if GitHub can't load commits (this happens for repos
+		// like AOSiP-Devices/kernel_xiaomi_laurel_sprout, presumably because
+		// they have too many commits).
+		log.Warningf(c, "Could not load commits for repo %s (%d), not retrying: %s", *repo.FullName, repoId, err.Error())
+		commits = make([]github.RepositoryCommit, 0)
 	} else if err != nil {
-		log.Errorf(c, "Could not load commits for repo %s (%d): %s", *repo.FullName, repoId, err.Error())
+		log.Errorf(c, "Could not load commits for repo %s (%d), will retry: %s", *repo.FullName, repoId, err.Error())
 		return err
 	}
 
