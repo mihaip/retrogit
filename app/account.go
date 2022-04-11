@@ -9,27 +9,27 @@ import (
 
 	"google.golang.org/appengine/datastore"
 
-	"code.google.com/p/goauth2/oauth"
 	"github.com/google/go-github/github"
+	"golang.org/x/oauth2"
 )
 
 type Account struct {
-	GitHubUserId int `datastore:",noindex"`
+	GitHubUserId int64 `datastore:",noindex"`
 	// The datastore API doesn't store maps, and the token contains one. We
 	// thefore store a gob-serialized version instead.
 	OAuthTokenSerialized []byte
-	OAuthToken           oauth.Token    `datastore:"-,"`
+	OAuthToken           oauth2.Token   `datastore:"-,"`
 	TimezoneName         string         `datastore:",noindex"`
 	TimezoneLocation     *time.Location `datastore:"-,"`
 	HasTimezoneSet       bool           `datastore:"-,"`
-	ExcludedRepoIds      []int          `datastore:",noindex"`
+	ExcludedRepoIds      []int64        `datastore:",noindex"`
 	DigestEmailAddress   string
 	Frequency            string
 	WeeklyDay            time.Weekday
 }
 
-func getAccount(c context.Context, githubUserId int) (*Account, error) {
-	key := datastore.NewKey(c, "Account", "", int64(githubUserId), nil)
+func getAccount(c context.Context, githubUserId int64) (*Account, error) {
+	key := datastore.NewKey(c, "Account", "", githubUserId, nil)
 	account := new(Account)
 	err := datastore.Get(c, key, account)
 	if err != nil {
@@ -79,7 +79,7 @@ func getAllAccounts(c context.Context) ([]Account, error) {
 	return accounts, nil
 }
 
-func (account *Account) IsRepoIdExcluded(repoId int) bool {
+func (account *Account) IsRepoIdExcluded(repoId int64) bool {
 	for i := range account.ExcludedRepoIds {
 		if account.ExcludedRepoIds[i] == repoId {
 			return true
@@ -106,11 +106,11 @@ func (account *Account) Delete(c context.Context) error {
 	return err
 }
 
-func (account *Account) GetDigestEmailAddress(githubClient *github.Client) (string, error) {
+func (account *Account) GetDigestEmailAddress(c context.Context, githubClient *github.Client) (string, error) {
 	if len(account.DigestEmailAddress) > 0 {
 		return account.DigestEmailAddress, nil
 	}
-	emails, _, err := githubClient.Users.ListEmails(nil)
+	emails, _, err := githubClient.Users.ListEmails(c, nil)
 	if err != nil {
 		return "", err
 	}

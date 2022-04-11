@@ -173,7 +173,7 @@ type Digest struct {
 }
 
 func newDigest(c context.Context, githubClient *github.Client, account *Account) (*Digest, error) {
-	user, _, err := githubClient.Users.Get("")
+	user, _, err := githubClient.Users.Get(c, "")
 	if err != nil {
 		return nil, err
 	}
@@ -224,14 +224,14 @@ func newDigest(c context.Context, githubClient *github.Client, account *Account)
 		RepoErrors:       make(map[string]error),
 	}
 
-	digest.fetch(githubClient)
+	digest.fetch(c, githubClient)
 	for repoFullName, err := range digest.RepoErrors {
 		log.Errorf(c, "Error fetching %s: %s", repoFullName, err.Error())
 	}
 	return digest, nil
 }
 
-func (digest *Digest) fetch(githubClient *github.Client) {
+func (digest *Digest) fetch(c context.Context, githubClient *github.Client) {
 	type RepoDigestResponse struct {
 		intervalDigest *IntervalDigest
 		repo           *Repo
@@ -243,10 +243,11 @@ func (digest *Digest) fetch(githubClient *github.Client) {
 	for _, intervalDigest := range digest.IntervalDigests {
 		for _, repo := range intervalDigest.repos {
 			go func(intervalDigest *IntervalDigest, repo *Repo) {
-				commits := make([]github.RepositoryCommit, 0)
+				commits := make([]*github.RepositoryCommit, 0)
 				page := 1
 				for {
 					pageCommits, response, err := githubClient.Repositories.ListCommits(
+						c,
 						*repo.Owner.Login,
 						*repo.Name,
 						&github.CommitsListOptions{
@@ -270,7 +271,7 @@ func (digest *Digest) fetch(githubClient *github.Client) {
 				}
 				digestCommits := make([]DigestCommit, len(commits))
 				for i := range commits {
-					digestCommits[len(commits)-i-1] = newDigestCommit(&commits[i], repo, digest.TimezoneLocation)
+					digestCommits[len(commits)-i-1] = newDigestCommit(commits[i], repo, digest.TimezoneLocation)
 				}
 				ch <- &RepoDigestResponse{intervalDigest, repo, &RepoDigest{repo, digestCommits}, nil}
 			}(intervalDigest, repo)

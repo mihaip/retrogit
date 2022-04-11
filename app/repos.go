@@ -20,29 +20,27 @@ const (
 )
 
 type RepoVintage struct {
-	UserId  int       `datastore:",noindex"`
-	RepoId  int       `datastore:",noindex"`
+	UserId  int64     `datastore:",noindex"`
+	RepoId  int64     `datastore:",noindex"`
 	Vintage time.Time `datastore:",noindex"`
 }
 
-func getVintageKey(c context.Context, userId int, repoId int) *datastore.Key {
+func getVintageKey(c context.Context, userId int64, repoId int64) *datastore.Key {
 	return datastore.NewKey(c, "RepoVintage", fmt.Sprintf("%d-%d", userId, repoId), 0, nil)
 }
 
 var computeVintageFunc *delay.Function
 
-func computeVintage(c context.Context, userId int, userLogin string, repoId int, repoOwnerLogin string, repoName string) error {
+func computeVintage(c context.Context, userId int64, userLogin string, repoId int64, repoOwnerLogin string, repoName string) error {
 	account, err := getAccount(c, userId)
 	if err != nil {
 		log.Errorf(c, "Could not load account %d: %s. Presumed deleted, aborting computing vintage for %s/%s", userId, err.Error(), repoOwnerLogin, repoName)
 		return nil
 	}
 
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
+	githubClient := githubOAuthClient(c, account.OAuthToken)
 
-	repo, response, err := githubClient.Repositories.Get(repoOwnerLogin, repoName)
+	repo, response, err := githubClient.Repositories.Get(c, repoOwnerLogin, repoName)
 	if response.StatusCode == 403 || response.StatusCode == 404 {
 		log.Warningf(c, "Got a %d when trying to look up %s/%s (%d)", response.StatusCode, repoOwnerLogin, repoName, repoId)
 		_, err = datastore.Put(c, getVintageKey(c, userId, repoId), &RepoVintage{
@@ -60,6 +58,7 @@ func computeVintage(c context.Context, userId int, userLogin string, repoId int,
 	vintage := repo.CreatedAt.UTC()
 	beforeCreationTime := repo.CreatedAt.UTC().AddDate(0, 0, -1)
 	commits, response, err := githubClient.Repositories.ListCommits(
+		c,
 		repoOwnerLogin,
 		repoName,
 		&github.CommitsListOptions{
@@ -69,13 +68,13 @@ func computeVintage(c context.Context, userId int, userLogin string, repoId int,
 		})
 	if response != nil && response.StatusCode == 409 {
 		// GitHub returns with a 409 when a repository is empty.
-		commits = make([]github.RepositoryCommit, 0)
+		commits = make([]*github.RepositoryCommit, 0)
 	} else if response != nil && response.StatusCode >= 500 {
 		// Avoid retries if GitHub can't load commits (this happens for repos
 		// like AOSiP-Devices/kernel_xiaomi_laurel_sprout, presumably because
 		// they have too many commits).
 		log.Warningf(c, "Could not load commits for repo %s (%d), not retrying: %s", *repo.FullName, repoId, err.Error())
-		commits = make([]github.RepositoryCommit, 0)
+		commits = make([]*github.RepositoryCommit, 0)
 	} else if err != nil {
 		log.Errorf(c, "Could not load commits for repo %s (%d), will retry: %s", *repo.FullName, repoId, err.Error())
 		return err
@@ -84,7 +83,7 @@ func computeVintage(c context.Context, userId int, userLogin string, repoId int,
 	// If there are, then we use the contributor stats API to figure out when
 	// the user's first commit in the repository was.
 	if len(commits) > 0 {
-		stats, response, err := githubClient.Repositories.ListContributorsStats(repoOwnerLogin, repoName)
+		stats, response, err := githubClient.Repositories.ListContributorsStats(c, repoOwnerLogin, repoName)
 		if response.StatusCode == 202 {
 			log.Infof(c, "Stats were not available for %s, will try again later", *repo.FullName)
 			task, err := computeVintageFunc.Task(userId, userLogin, repoId, repoOwnerLogin, repoName)
@@ -247,10 +246,11 @@ type UserRepos struct {
 }
 
 func getRepos(c context.Context, githubClient *github.Client, account *Account, user *github.User) (*Repos, error) {
-	clientUserRepos := make([]github.Repository, 0)
+	clientUserRepos := make([]*github.Repository, 0)
 	page := 1
 	for {
 		pageClientUserRepos, response, err := githubClient.Repositories.List(
+			c,
 			// The username parameter must be left blank so that we can get all
 			// of the repositories the user has access to, not just ones that
 			// they own.
@@ -277,7 +277,7 @@ func getRepos(c context.Context, githubClient *github.Client, account *Account, 
 	for i := range clientUserRepos {
 		ownerID := *clientUserRepos[i].Owner.ID
 		if ownerID == *user.ID {
-			repos.UserRepos = append(repos.UserRepos, newRepo(&clientUserRepos[i], account))
+			repos.UserRepos = append(repos.UserRepos, newRepo(clientUserRepos[i], account))
 		} else {
 			var userRepos *UserRepos
 			for j := range repos.OtherUserRepos {
@@ -293,7 +293,7 @@ func getRepos(c context.Context, githubClient *github.Client, account *Account, 
 				}
 				repos.OtherUserRepos = append(repos.OtherUserRepos, userRepos)
 			}
-			userRepos.Repos = append(userRepos.Repos, newRepo(&clientUserRepos[i], account))
+			userRepos.Repos = append(userRepos.Repos, newRepo(clientUserRepos[i], account))
 		}
 	}
 

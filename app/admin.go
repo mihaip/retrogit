@@ -35,13 +35,11 @@ func usersAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	ch := make(chan *AdminUserData)
 	for i := range accounts {
 		go func(account *Account) {
-			oauthTransport := githubOAuthTransport(c)
-			oauthTransport.Token = &account.OAuthToken
-			githubClient := github.NewClient(oauthTransport.Client())
+			githubClient := githubOAuthClient(c, account.OAuthToken)
 
-			user, _, err := githubClient.Users.Get("")
+			user, _, err := githubClient.Users.Get(c, "")
 
-			emailAddress, err := account.GetDigestEmailAddress(githubClient)
+			emailAddress, err := account.GetDigestEmailAddress(c, githubClient)
 			if err != nil {
 				emailAddress = err.Error()
 			}
@@ -70,7 +68,7 @@ func usersAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 }
 
 func digestAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	userId, err := strconv.Atoi(r.FormValue("user_id"))
+	userId, err := strconv.ParseInt(r.FormValue("user_id"), 10, 64)
 	if err != nil {
 		return BadRequest(err, "Malformed user_id value")
 	}
@@ -83,9 +81,7 @@ func digestAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		return InternalError(err, "Could not look up account")
 	}
 
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
+	githubClient := githubOAuthClient(c, account.OAuthToken)
 
 	digest, err := newDigest(c, githubClient, account)
 	if err != nil {
@@ -99,7 +95,7 @@ func digestAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 }
 
 func reposAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	userId, err := strconv.Atoi(r.FormValue("user_id"))
+	userId, err := strconv.ParseInt(r.FormValue("user_id"), 10, 64)
 	if err != nil {
 		return BadRequest(err, "Malformed user_id value")
 	}
@@ -112,11 +108,9 @@ func reposAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		return InternalError(err, "Could not look up account")
 	}
 
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
+	githubClient := githubOAuthClient(c, account.OAuthToken)
 
-	user, _, err := githubClient.Users.Get("")
+	user, _, err := githubClient.Users.Get(c, "")
 	repos, reposErr := getRepos(c, githubClient, account, user)
 	if err == nil {
 		repos.Redact()
@@ -131,7 +125,7 @@ func reposAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 }
 
 func deleteAccountAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
-	userId, err := strconv.Atoi(r.FormValue("user_id"))
+	userId, err := strconv.ParseInt(r.FormValue("user_id"), 10, 64)
 	if err != nil {
 		return BadRequest(err, "Malformed user_id value")
 	}

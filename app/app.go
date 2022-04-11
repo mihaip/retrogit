@@ -149,7 +149,7 @@ func (fn SignedInAppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer panicRecovery(w, r)
 	makeUncacheable(w)
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
+	userId, ok := session.Values[sessionConfig.UserIdKey].(int64)
 	if !ok {
 		handleAppError(NotSignedIn(r), w, r)
 		return
@@ -161,9 +161,7 @@ func (fn SignedInAppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
+	githubClient := githubOAuthClient(c, account.OAuthToken)
 
 	state := &AppSignedInState{
 		Account:        account,
@@ -238,7 +236,7 @@ func handleAppError(e *AppError, w http.ResponseWriter, r *http.Request) {
 
 func sendAppErrorMail(e *AppError, r *http.Request) {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId, _ := session.Values[sessionConfig.UserIdKey].(int)
+	userId, _ := session.Values[sessionConfig.UserIdKey].(int64)
 
 	errorMessage := &mail.Message{
 		Sender:  "RetroGit Admin <digests@retrogit.com>",

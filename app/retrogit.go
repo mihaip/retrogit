@@ -21,15 +21,15 @@ import (
 	"google.golang.org/appengine/mail"
 	"google.golang.org/appengine/urlfetch"
 
-	"code.google.com/p/goauth2/oauth"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"golang.org/x/oauth2"
 )
 
 var router *mux.Router
-var githubOauthConfig oauth.Config
-var githubOauthPublicConfig oauth.Config
+var githubOauthConfig oauth2.Config
+var githubOauthPublicConfig oauth2.Config
 var timezones Timezones
 var sessionStore *sessions.CookieStore
 var sessionConfig SessionConfig
@@ -68,7 +68,7 @@ func main() {
 	appengine.Main()
 }
 
-func initGithubOAuthConfig(includePrivateRepos bool) (config oauth.Config) {
+func initGithubOAuthConfig(includePrivateRepos bool) (config oauth2.Config) {
 	path := "config/github-oauth"
 	if appengine.IsDevAppServer() {
 		path += "-dev"
@@ -86,15 +86,17 @@ func initGithubOAuthConfig(includePrivateRepos bool) (config oauth.Config) {
 	if !includePrivateRepos {
 		repoScopeModifier = "public_"
 	}
-	config.Scope = fmt.Sprintf("%srepo user:email", repoScopeModifier)
-	config.AuthURL = "https://github.com/login/oauth/authorize"
-	config.TokenURL = "https://github.com/login/oauth/access_token"
+	config.Scopes = []string{fmt.Sprintf("%srepo", repoScopeModifier), "user:email"}
+	config.Endpoint = oauth2.Endpoint{
+		AuthURL:  "https://github.com/login/oauth/authorize",
+		TokenURL: "https://github.com/login/oauth/access_token",
+	}
 	return
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	session, _ := sessionStore.Get(r, sessionConfig.CookieName)
-	userId, ok := session.Values[sessionConfig.UserIdKey].(int)
+	userId, ok := session.Values[sessionConfig.UserIdKey].(int64)
 	if !ok {
 		data := map[string]interface{}{
 			"ContinueUrl": r.FormValue("continue_url"),
@@ -113,9 +115,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) *AppError {
 		return InternalError(err, "Could not look up account")
 	}
 
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
+	githubClient := githubOAuthClient(c, account.OAuthToken)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -124,11 +124,11 @@ func indexHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	var emailAddress string
 	var emailAddressErr error
 	go func() {
-		user, _, userErr = githubClient.Users.Get("")
+		user, _, userErr = githubClient.Users.Get(c, "")
 		wg.Done()
 	}()
 	go func() {
-		emailAddress, emailAddressErr = account.GetDigestEmailAddress(githubClient)
+		emailAddress, emailAddressErr = account.GetDigestEmailAddress(c, githubClient)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -250,7 +250,7 @@ func digestCronHandler(w http.ResponseWriter, r *http.Request) *AppError {
 
 var sendDigestForAccountFunc = delay.Func(
 	"sendDigestForAccount",
-	func(c context.Context, githubUserId int) error {
+	func(c context.Context, githubUserId int64) error {
 		log.Infof(c, "Sending digest for %d...", githubUserId)
 		account, err := getAccount(c, githubUserId)
 		if err != nil {
@@ -271,7 +271,7 @@ var sendDigestForAccountFunc = delay.Func(
 		return err
 	})
 
-func sendDigestErrorMail(e error, c context.Context, gitHubUserId int) {
+func sendDigestErrorMail(e error, c context.Context, gitHubUserId int64) {
 	if strings.Contains(e.Error(), ": 502") {
 		// Ignore 502s from GitHub, there's nothing we do about them.
 		return
@@ -295,11 +295,9 @@ func sendDigestErrorMail(e error, c context.Context, gitHubUserId int) {
 }
 
 func sendDigestForAccount(account *Account, c context.Context) (bool, error) {
-	oauthTransport := githubOAuthTransport(c)
-	oauthTransport.Token = &account.OAuthToken
-	githubClient := github.NewClient(oauthTransport.Client())
+	githubClient := githubOAuthClient(c, account.OAuthToken)
 
-	emailAddress, err := account.GetDigestEmailAddress(githubClient)
+	emailAddress, err := account.GetDigestEmailAddress(c, githubClient)
 	if err != nil {
 		if gitHubError, ok := (err).(*github.ErrorResponse); ok {
 			gitHubStatus := gitHubError.Response.StatusCode
@@ -365,15 +363,13 @@ func sendDigestForAccount(account *Account, c context.Context) (bool, error) {
 func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	code := r.FormValue("code")
 	c := appengine.NewContext(r)
-	oauthTransport := githubOAuthTransport(c)
-	token, err := oauthTransport.Exchange(code)
+	token, err := githubOauthConfig.Exchange(c, code)
 	if err != nil {
 		return InternalError(err, "Could not exchange OAuth code")
 	}
 
-	oauthTransport.Token = token
-	githubClient := github.NewClient(oauthTransport.Client())
-	user, _, err := githubClient.Users.Get("")
+	githubClient := githubOAuthClient(c, *token)
+	user, _, err := githubClient.Users.Get(c, "")
 	if err != nil {
 		return GitHubFetchError(err, "user")
 	}
@@ -389,7 +385,7 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *AppErro
 	// Persist the default email address now, both to avoid additional lookups
 	// later and to have a way to contact the user if they ever revoke their
 	// OAuth token.
-	emailAddress, err := account.GetDigestEmailAddress(githubClient)
+	emailAddress, err := account.GetDigestEmailAddress(c, githubClient)
 	if err == nil && len(emailAddress) > 0 {
 		account.DigestEmailAddress = emailAddress
 	}
@@ -417,7 +413,7 @@ func githubOAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *AppErro
 
 func settingsHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInState) *AppError {
 	c := appengine.NewContext(r)
-	user, _, err := state.GitHubClient.Users.Get("")
+	user, _, err := state.GitHubClient.Users.Get(c, "")
 	if err != nil {
 		return GitHubFetchError(err, "user")
 	}
@@ -427,7 +423,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInS
 		return GitHubFetchError(err, "repositories")
 	}
 
-	emails, _, err := state.GitHubClient.Users.ListEmails(nil)
+	emails, _, err := state.GitHubClient.Users.ListEmails(c, nil)
 	if err != nil {
 		return GitHubFetchError(err, "emails")
 	}
@@ -435,7 +431,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request, state *AppSignedInS
 	for i := range emails {
 		emailAddresses[i] = *emails[i].Email
 	}
-	accountEmailAddress, err := state.Account.GetDigestEmailAddress(state.GitHubClient)
+	accountEmailAddress, err := state.Account.GetDigestEmailAddress(c, state.GitHubClient)
 	if err != nil {
 		return GitHubFetchError(err, "emails")
 	}
@@ -455,7 +451,7 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request, state *AppSigne
 	c := appengine.NewContext(r)
 	account := state.Account
 
-	user, _, err := state.GitHubClient.Users.Get("")
+	user, _, err := state.GitHubClient.Users.Get(c, "")
 	if err != nil {
 		return GitHubFetchError(err, "user")
 	}
@@ -479,7 +475,7 @@ func saveSettingsHandler(w http.ResponseWriter, r *http.Request, state *AppSigne
 	}
 	account.TimezoneName = timezoneName
 
-	account.ExcludedRepoIds = make([]int, 0)
+	account.ExcludedRepoIds = make([]int64, 0)
 	for _, repo := range repos.AllRepos {
 		repoId := *repo.ID
 		_, included := r.Form[fmt.Sprintf("repo-%d", repoId)]
@@ -526,7 +522,7 @@ func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request, state *Ap
 
 var cacheDigestForAccountFunc = delay.Func(
 	"cacheDigestForAccount",
-	func(c context.Context, githubUserId int) error {
+	func(c context.Context, githubUserId int64) error {
 		log.Infof(c, "Caching digest for %d...", githubUserId)
 		account, err := getAccount(c, githubUserId)
 		if err != nil {
@@ -536,9 +532,7 @@ var cacheDigestForAccountFunc = delay.Func(
 			return nil
 		}
 
-		oauthTransport := githubOAuthTransport(c)
-		oauthTransport.Token = &account.OAuthToken
-		githubClient := github.NewClient(oauthTransport.Client())
+		githubClient := githubOAuthClient(c, account.OAuthToken)
 		_, err = newDigest(c, githubClient, account)
 		if err != nil {
 			log.Errorf(c, "  Error computing digest: %s", err.Error())
@@ -554,15 +548,21 @@ func deleteAccountHandler(w http.ResponseWriter, r *http.Request, state *AppSign
 	return RedirectToRoute("index")
 }
 
-func githubOAuthTransport(c context.Context) *oauth.Transport {
+func githubOAuthClient(c context.Context, token oauth2.Token) *github.Client {
 	ctx_with_timeout, _ := context.WithTimeout(c, time.Second*60)
 	appengineTransport := &urlfetch.Transport{Context: ctx_with_timeout}
 	cachingTransport := &CachingTransport{
 		Transport: appengineTransport,
 		Context:   ctx_with_timeout,
 	}
-	return &oauth.Transport{
-		Config:    &githubOauthConfig,
-		Transport: cachingTransport,
+
+	tokenSource := githubOauthConfig.TokenSource(ctx_with_timeout, &token)
+	httpClient := &http.Client{
+		Transport: &oauth2.Transport{
+			Base:   cachingTransport,
+			Source: oauth2.ReuseTokenSource(nil, tokenSource),
+		},
 	}
+
+	return github.NewClient(httpClient)
 }
