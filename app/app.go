@@ -239,8 +239,8 @@ func sendAppErrorMail(e *AppError, r *http.Request) {
 	userId, _ := session.Values[sessionConfig.UserIdKey].(int64)
 
 	errorMessage := &mail.Message{
-		Sender:  "RetroGit Admin <digests@retrogit.com>",
-		To:      []string{"mihai.parparita@gmail.com"},
+		Sender:  "RetroGit for samsonjs <digests@retrogit.appspotmail.com>",
+		To:      []string{"sami.samhuri@gmail.com"},
 		Subject: fmt.Sprintf("RetroGit Internal Error on %s", r.URL),
 		Body: fmt.Sprintf(`Request URL: %s
 HTTP status code: %d

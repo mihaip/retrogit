@@ -283,8 +283,8 @@ func sendDigestErrorMail(e error, c context.Context, gitHubUserId int64) {
 	}
 
 	errorMessage := &mail.Message{
-		Sender:  "RetroGit Admin <digests@retrogit.com>",
-		To:      []string{"mihai.parparita@gmail.com"},
+		Sender:  "RetroGit for samsonjs <digests@retrogit.appspotmail.com>",
+		To:      []string{"sami.samhuri@gmail.com"},
 		Subject: fmt.Sprintf("RetroGit Digest Send Error for %d", gitHubUserId),
 		Body:    fmt.Sprintf("Error: %s", e),
 	}
@@ -327,7 +327,7 @@ func sendDigestForAccount(account *Account, c context.Context) (bool, error) {
 				}
 
 				digestMessage := &mail.Message{
-					Sender:   "RetroGit <digests@retrogit.com>",
+					Sender:   "RetroGit for samsonjs <digests@retrogit.appspotmail.com>",
 					To:       []string{emailAddress},
 					Subject:  "RetroGit Digest Error",
 					HTMLBody: authErrorHtml.String(),
@@ -351,7 +351,7 @@ func sendDigestForAccount(account *Account, c context.Context) (bool, error) {
 	}
 
 	digestMessage := &mail.Message{
-		Sender:   "RetroGit <digests@retrogit.com>",
+		Sender:   "RetroGit for samsonjs <digests@retrogit.appspotmail.com>",
 		To:       []string{emailAddress},
 		Subject:  "RetroGit Digest",
 		HTMLBody: digestHtml.String(),
