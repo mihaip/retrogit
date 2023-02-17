@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/mail"
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/log"
+	"google.golang.org/appengine/v2/mail"
 
 	"github.com/google/go-github/github"
 	"github.com/gorilla/sessions"
