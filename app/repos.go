@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/delay"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/taskqueue"
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/datastore"
+	"google.golang.org/appengine/v2/delay"
+	"google.golang.org/appengine/v2/log"
+	"google.golang.org/appengine/v2/taskqueue"
 
 	"github.com/google/go-github/github"
 )

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/v2/log"
 
 	"github.com/google/go-github/github"
 )
