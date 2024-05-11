@@ -29,6 +29,14 @@ func getVintageKey(c context.Context, userId int64, repoId int64) *datastore.Key
 	return datastore.NewKey(c, "RepoVintage", fmt.Sprintf("%d-%d", userId, repoId), 0, nil)
 }
 
+type RepoVintageStatsRetries struct {
+	Count int32 `datastore:",noindex"`
+}
+
+func getVintageStatsRetriesKey(c context.Context, userId int64, repoId int64) *datastore.Key {
+	return datastore.NewKey(c, "RepoVintageStatsRetries", fmt.Sprintf("%d-%d", userId, repoId), 0, nil)
+}
+
 var computeVintageFunc *delay.Function
 
 func computeVintage(c context.Context, userId int64, userLogin string, repoId int64, repoOwnerLogin string, repoName string) error {
@@ -84,30 +92,55 @@ func computeVintage(c context.Context, userId int64, userLogin string, repoId in
 	// the user's first commit in the repository was.
 	if len(commits) > 0 {
 		stats, response, err := githubClient.Repositories.ListContributorsStats(c, repoOwnerLogin, repoName)
-		if response.StatusCode == 202 {
-			log.Infof(c, "Stats were not available for %s, will try again later", *repo.FullName)
-			task, err := computeVintageFunc.Task(userId, userLogin, repoId, repoOwnerLogin, repoName)
-			if err != nil {
-				log.Errorf(c, "Could create delayed task for %s: %s", *repo.FullName, err.Error())
-				return err
-			}
-			task.Delay = time.Second * 10
-			taskqueue.Add(c, task, "")
-			return nil
-		}
-		if err != nil {
+		if err != nil && (response == nil || response.StatusCode != 202) {
 			log.Errorf(c, "Could not load stats for repo %s: %s", *repo.FullName, err.Error())
 			return err
 		}
-		for _, stat := range stats {
-			if *stat.Author.ID == userId {
-				for i := range stat.Weeks {
-					weekTimestamp := stat.Weeks[i].Week.UTC()
-					if weekTimestamp.Before(vintage) {
-						vintage = weekTimestamp
-					}
+		// GitHub says that stats may not be immediately available, and that it
+		// will return a 202 status code if it is still computing them. In
+		// practice as of mid-2024 the stats are only recomputed if the user visits
+		// the web UI, so we give up retrying after a while.
+		if response.StatusCode == 202 {
+			retriesKey := getVintageStatsRetriesKey(c, userId, repoId)
+			var retries RepoVintageStatsRetries
+			if err := datastore.Get(c, retriesKey, &retries); err != nil {
+				if err == datastore.ErrNoSuchEntity {
+					retries = RepoVintageStatsRetries{0}
+				} else {
+					log.Errorf(c, "Could not load retries for repo %s: %s", *repo.FullName, err.Error())
+					return err
 				}
-				break
+			}
+
+			if retries.Count < 5 {
+				retries.Count++
+				_, err = datastore.Put(c, retriesKey, &retries)
+				if err != nil {
+					log.Errorf(c, "Could not save retries for repo %s: %v", *repo.FullName, err)
+				}
+				log.Infof(c, "Stats were not available for %s, will try again later (attempt %d)", *repo.FullName, retries.Count)
+				task, err := computeVintageFunc.Task(userId, userLogin, repoId, repoOwnerLogin, repoName)
+				if err != nil {
+					log.Errorf(c, "Could create delayed task for %s: %s", *repo.FullName, err.Error())
+					return err
+				}
+				task.Delay = time.Second * 10 * time.Duration(retries.Count)
+				taskqueue.Add(c, task, "")
+				return nil
+			} else {
+				log.Errorf(c, "Stats were not available for %s after %d attempts, giving up", *repo.FullName, retries.Count)
+			}
+		} else {
+			for _, stat := range stats {
+				if *stat.Author.ID == userId {
+					for i := range stat.Weeks {
+						weekTimestamp := stat.Weeks[i].Week.UTC()
+						if weekTimestamp.Before(vintage) {
+							vintage = weekTimestamp
+						}
+					}
+					break
+				}
 			}
 		}
 	}
@@ -126,7 +159,7 @@ func computeVintage(c context.Context, userId int64, userLogin string, repoId in
 }
 
 func init() {
-	computeVintageFunc = delay.Func("computeVintage", computeVintage)
+	computeVintageFunc = delay.MustRegister("computeVintage", computeVintage)
 }
 
 func fillVintages(c context.Context, user *github.User, repos []*Repo) error {
