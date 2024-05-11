@@ -1,6 +1,8 @@
 module persistent.info/retrogit
 
-go 1.18
+go 1.21
+
+toolchain go1.22.3
 
 require (
 	github.com/google/go-github/v62 v62.0.0
