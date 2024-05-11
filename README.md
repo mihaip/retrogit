@@ -13,7 +13,7 @@ Then, create `github-oauth.json` (you'll need to [register a new app](https://gi
 Finally, run:
 
 ```
-dev_appserver.py --enable_sendmail=yes app
+./dev.sh
 ```
 
 The server can the be accessed at [http://localhost:8080/](http://localhost:8080/).
