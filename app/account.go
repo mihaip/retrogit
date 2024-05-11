@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/appengine/v2/datastore"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v62/github"
 	"golang.org/x/oauth2"
 )
 

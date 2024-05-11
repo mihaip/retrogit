@@ -11,7 +11,7 @@ import (
 	"google.golang.org/appengine/v2/log"
 	"google.golang.org/appengine/v2/taskqueue"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v62/github"
 )
 
 const (

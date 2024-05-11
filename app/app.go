@@ -15,7 +15,7 @@ import (
 	"google.golang.org/appengine/v2/log"
 	"google.golang.org/appengine/v2/mail"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v62/github"
 	"github.com/gorilla/sessions"
 )
 

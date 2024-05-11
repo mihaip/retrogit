@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/appengine/v2"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v62/github"
 )
 
 type AdminUserData struct {
@@ -53,7 +53,7 @@ func usersAdminHandler(w http.ResponseWriter, r *http.Request) *AppError {
 	}
 
 	users := make([]*AdminUserData, 0)
-	for _ = range accounts {
+	for range accounts {
 		select {
 		case r := <-ch:
 			users = append(users, r)

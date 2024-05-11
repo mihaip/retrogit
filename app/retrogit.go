@@ -21,7 +21,7 @@ import (
 	"google.golang.org/appengine/v2/mail"
 	"google.golang.org/appengine/v2/urlfetch"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v62/github"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
@@ -548,8 +548,8 @@ func deleteAccountHandler(w http.ResponseWriter, r *http.Request, state *AppSign
 	return RedirectToRoute("index")
 }
 
-func githubOAuthClient(c context.Context, token oauth2.Token) *github.Client {
-	ctx_with_timeout, _ := context.WithTimeout(c, time.Second*60)
+func githubOAuthClient(ctx context.Context, token oauth2.Token) *github.Client {
+	ctx_with_timeout, _ := context.WithTimeout(ctx, time.Second*60)
 	appengineTransport := &urlfetch.Transport{Context: ctx_with_timeout}
 	cachingTransport := &CachingTransport{
 		Transport: appengineTransport,
