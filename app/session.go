@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	"google.golang.org/appengine"
+	"google.golang.org/appengine/v2"
 
 	"github.com/gorilla/sessions"
 )
