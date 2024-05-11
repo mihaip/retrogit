@@ -32,7 +32,7 @@ type DigestCommit struct {
 
 func safeFormattedDate(date string) string {
 	// Insert zero-width spaces every few characters so that Apple Data
-	// Detectors and Gmail's calendar event dection don't pick up on these
+	// Detectors and Gmail's calendar event detection don't pick up on these
 	// dates.
 	var buffer bytes.Buffer
 	dateLength := len(date)
@@ -79,7 +79,7 @@ func (commit DigestCommit) WeeklyDisplayDate() string {
 func (commit DigestCommit) DisplayDateTooltip() string {
 	// But show the full details in a tooltip
 	return fmt.Sprintf(
-		"Pushed at %s\nCommited at %s",
+		"Pushed at %s\nCommitted at %s",
 		commit.PushDate.Format(CommitDisplayDateFullFormat),
 		commit.CommitDate.Format(CommitDisplayDateFullFormat))
 }

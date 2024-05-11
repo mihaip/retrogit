@@ -241,14 +241,14 @@ func digestCronHandler(w http.ResponseWriter, r *http.Request) *AppError {
 				continue
 			}
 		}
-		log.Infof(c, "Enqueing task for %d...", account.GitHubUserId)
+		log.Infof(c, "Enqueuing task for %d...", account.GitHubUserId)
 		sendDigestForAccountFunc.Call(c, account.GitHubUserId)
 	}
 	fmt.Fprint(w, "Done")
 	return nil
 }
 
-var sendDigestForAccountFunc = delay.Func(
+var sendDigestForAccountFunc = delay.MustRegister(
 	"sendDigestForAccount",
 	func(c context.Context, githubUserId int64) error {
 		log.Infof(c, "Sending digest for %d...", githubUserId)
@@ -303,7 +303,7 @@ func sendDigestForAccount(account *Account, c context.Context) (bool, error) {
 			gitHubStatus := gitHubError.Response.StatusCode
 			if gitHubStatus == http.StatusUnauthorized ||
 				gitHubStatus == http.StatusForbidden {
-				log.Errorf(c, "  GitHub auth error while getting email adddress, skipping: %s", err.Error())
+				log.Errorf(c, "  GitHub auth error while getting email address, skipping: %s", err.Error())
 				return false, nil
 			}
 		}
@@ -520,7 +520,7 @@ func setInitialTimezoneHandler(w http.ResponseWriter, r *http.Request, state *Ap
 	return nil
 }
 
-var cacheDigestForAccountFunc = delay.Func(
+var cacheDigestForAccountFunc = delay.MustRegister(
 	"cacheDigestForAccount",
 	func(c context.Context, githubUserId int64) error {
 		log.Infof(c, "Caching digest for %d...", githubUserId)

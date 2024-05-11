@@ -16,7 +16,7 @@ import (
 type Account struct {
 	GitHubUserId int64 `datastore:",noindex"`
 	// The datastore API doesn't store maps, and the token contains one. We
-	// thefore store a gob-serialized version instead.
+	// therefore store a gob-serialized version instead.
 	OAuthTokenSerialized []byte
 	OAuthToken           oauth2.Token   `datastore:"-,"`
 	TimezoneName         string         `datastore:",noindex"`
