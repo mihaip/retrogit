@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"google.golang.org/appengine/v2"
@@ -74,8 +75,9 @@ func computeVintage(c context.Context, userId int64, userLogin string, repoId in
 			Author:      userLogin,
 			Until:       beforeCreationTime,
 		})
-	if response != nil && response.StatusCode == 409 {
-		// GitHub returns with a 409 when a repository is empty.
+	if response != nil && (response.StatusCode == http.StatusConflict || response.StatusCode == http.StatusUnavailableForLegalReasons) {
+		// GitHub returns a 409 when a repository is empty and a 451 when it's
+		// blocked by a DMCA takedown.
 		commits = make([]*github.RepositoryCommit, 0)
 	} else if response != nil && response.StatusCode >= 500 {
 		// Avoid retries if GitHub can't load commits (this happens for repos
