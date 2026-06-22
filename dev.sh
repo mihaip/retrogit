@@ -1,3 +1,5 @@
 #!/bin/sh
 
-python3 `which dev_appserver.py`  --enable_sendmail=yes app
+set -e
+
+python3 "$(which dev_appserver.py)" --enable_sendmail=yes app
